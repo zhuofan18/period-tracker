@@ -29,7 +29,8 @@ export default function HomeScreen({ navigation }) {
   const { theme } = useTheme();
   const s = styles(theme);
 
-  const [lastPeriodStart, setLastPeriodStart] = useState('2026-06-16');
+  const [lastPeriodStart, setLastPeriodStart] = useState(null);
+  const [loading, setLoading]                 = useState(true);
   const [modalVisible, setModalVisible]       = useState(false);
   const [pickedDate, setPickedDate]           = useState(null);
   const [displayName, setDisplayName]         = useState('');
@@ -37,8 +38,9 @@ export default function HomeScreen({ navigation }) {
   useFocusEffect(
     useCallback(() => {
       const load = async () => {
+        setLoading(true);
         const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
+        if (!user) { setLoading(false); return; }
         const { data: profile } = await supabase.from('profiles').select('first_name, username').eq('id', user.id).single();
         if (profile) setDisplayName(profile.first_name || profile.username || '');
         const { data: periods } = await supabase
@@ -47,17 +49,18 @@ export default function HomeScreen({ navigation }) {
           .eq('user_id', user.id)
           .order('start_date', { ascending: false })
           .limit(1);
-        if (periods && periods.length > 0) setLastPeriodStart(periods[0].start_date);
+        setLastPeriodStart(periods && periods.length > 0 ? periods[0].start_date : null);
+        setLoading(false);
       };
       load();
     }, [])
   );
 
-  const cycleDay   = getCycleDay(lastPeriodStart);
-  const phaseKey   = getPhaseForDay(cycleDay);
+  const cycleDay   = lastPeriodStart ? getCycleDay(lastPeriodStart) : null;
+  const phaseKey   = cycleDay ? getPhaseForDay(cycleDay) : 'follicular';
   const phase      = PHASES[phaseKey];
-  const daysLeft   = getDaysUntilNextPeriod(lastPeriodStart);
-  const nextPeriod = getNextPeriodDate(lastPeriodStart);
+  const daysLeft   = lastPeriodStart ? getDaysUntilNextPeriod(lastPeriodStart) : null;
+  const nextPeriod = lastPeriodStart ? getNextPeriodDate(lastPeriodStart) : null;
 
   const openModal = () => {
     setPickedDate(today);
@@ -84,26 +87,37 @@ export default function HomeScreen({ navigation }) {
 
       <ScrollView contentContainerStyle={s.content}>
         {/* Main card */}
-        <View style={s.mainCard}>
-          <View style={s.mainCardSide}>
-            <Text style={s.cardLabel}>Cycle Day</Text>
-            <Text style={[s.bigNum, { color: phase.color }]}>{cycleDay}</Text>
-            <View style={[s.phasePill, { backgroundColor: phase.color + '22', borderColor: phase.color }]}>
-              <View style={[s.phaseDot, { backgroundColor: phase.color }]} />
-              <Text style={[s.phasePillText, { color: phase.color }]}>{phase.label}</Text>
+        {!loading && !lastPeriodStart ? (
+          <View style={s.noPeriodCard}>
+            <Text style={s.noPeriodEmoji}>🩸</Text>
+            <Text style={s.noPeriodTitle}>No period logged yet</Text>
+            <Text style={s.noPeriodSub}>Log your last period start date to see your cycle day and predictions.</Text>
+            <TouchableOpacity style={s.noPeriodBtn} onPress={openModal}>
+              <Text style={s.noPeriodBtnText}>Log Period Start</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <View style={s.mainCard}>
+            <View style={s.mainCardSide}>
+              <Text style={s.cardLabel}>Cycle Day</Text>
+              <Text style={[s.bigNum, { color: phase.color }]}>{loading ? '—' : cycleDay}</Text>
+              <View style={[s.phasePill, { backgroundColor: phase.color + '22', borderColor: phase.color }]}>
+                <View style={[s.phaseDot, { backgroundColor: phase.color }]} />
+                <Text style={[s.phasePillText, { color: phase.color }]}>{phase.label}</Text>
+              </View>
+            </View>
+            <View style={s.divider} />
+            <View style={s.mainCardSide}>
+              <Text style={s.cardLabel}>Next Period In</Text>
+              <Text style={[s.bigNum, { color: phase.color }]}>{loading ? '—' : daysLeft}</Text>
+              <Text style={s.unit}>days</Text>
+              <Text style={s.nextDate}>{loading ? '' : nextPeriod}</Text>
             </View>
           </View>
-          <View style={s.divider} />
-          <View style={s.mainCardSide}>
-            <Text style={s.cardLabel}>Next Period In</Text>
-            <Text style={[s.bigNum, { color: phase.color }]}>{daysLeft}</Text>
-            <Text style={s.unit}>days</Text>
-            <Text style={s.nextDate}>{nextPeriod}</Text>
-          </View>
-        </View>
+        )}
 
         {/* 28-day strip */}
-        <View style={s.section}>
+        {lastPeriodStart && <View style={s.section}>
           <Text style={s.sectionTitle}>Your Cycle</Text>
           <View style={s.strip}>
             {days.map((d) => {
@@ -128,13 +142,13 @@ export default function HomeScreen({ navigation }) {
               </View>
             ))}
           </View>
-        </View>
+        </View>}
 
         {/* Phase info */}
-        <View style={[s.phaseInfo, { borderLeftColor: phase.color }]}>
+        {lastPeriodStart && <View style={[s.phaseInfo, { borderLeftColor: phase.color }]}>
           <Text style={[s.phaseInfoTitle, { color: phase.color }]}>{phase.label}</Text>
           <Text style={s.phaseInfoText}>{getPhaseDescription(phaseKey)}</Text>
-        </View>
+        </View>}
 
         {/* Quick actions */}
         <View style={s.actionsRow}>
@@ -250,6 +264,15 @@ const styles = (theme) => StyleSheet.create({
   },
   phaseInfoTitle: { fontSize: 14, fontWeight: '700', marginBottom: 6 },
   phaseInfoText: { fontSize: 13, color: theme.subtext, lineHeight: 20 },
+  noPeriodCard: {
+    backgroundColor: theme.card, borderRadius: 20, padding: 24, alignItems: 'center',
+    ...Platform.select({ web: { boxShadow: '0 2px 10px rgba(0,0,0,0.08)' }, default: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 3 } }),
+  },
+  noPeriodEmoji: { fontSize: 48, marginBottom: 12 },
+  noPeriodTitle: { fontSize: 17, fontWeight: '700', color: theme.text, marginBottom: 8 },
+  noPeriodSub:   { fontSize: 13, color: theme.muted, textAlign: 'center', lineHeight: 20, marginBottom: 20 },
+  noPeriodBtn:   { backgroundColor: '#e75480', borderRadius: 12, paddingVertical: 12, paddingHorizontal: 28 },
+  noPeriodBtnText: { color: '#fff', fontSize: 14, fontWeight: '600' },
   actionsRow: { flexDirection: 'row', gap: 12 },
   actionBtn: { flex: 1, paddingVertical: 14, borderRadius: 14, alignItems: 'center' },
   actionBtnText: { color: '#fff', fontSize: 14, fontWeight: '600' },

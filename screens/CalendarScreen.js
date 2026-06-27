@@ -1,0 +1,192 @@
+import { useState } from 'react';
+import { StyleSheet, Text, View, ScrollView, Platform } from 'react-native';
+import { Calendar } from 'react-native-calendars';
+import { useTheme } from '../context/ThemeContext';
+import { getCycleDay, getPhaseForDay, PHASES, CYCLE_LENGTH } from '../utils/cycleUtils';
+
+const LAST_PERIOD_START = '2026-06-16';
+
+function addDays(dateStr, n) {
+  const d = new Date(dateStr);
+  d.setDate(d.getDate() + n);
+  return d.toISOString().split('T')[0];
+}
+
+function buildMarkedDates(startDateStr) {
+  const marked = {};
+  for (let i = 0; i < CYCLE_LENGTH; i++) {
+    const dateStr   = addDays(startDateStr, i);
+    const dayNum    = i + 1;
+    const phaseKey  = getPhaseForDay(dayNum);
+    if (!phaseKey) continue;
+    const prevKey = getPhaseForDay(dayNum - 1);
+    const nextKey = getPhaseForDay(dayNum + 1);
+    const phase   = PHASES[phaseKey];
+    marked[dateStr] = {
+      color:       phase.color,
+      textColor:   phase.textColor,
+      startingDay: phaseKey !== prevKey,
+      endingDay:   phaseKey !== nextKey,
+    };
+  }
+  const nextStart = addDays(startDateStr, CYCLE_LENGTH);
+  marked[nextStart] = {
+    color: PHASES.period.color + '99',
+    textColor: '#fff',
+    startingDay: true,
+    endingDay: true,
+  };
+  return marked;
+}
+
+const PHASE_DESCRIPTIONS = {
+  period:     'Your period is here. Focus on rest, hydration, and managing cramps.',
+  follicular: 'Your body is rebuilding. Energy and mood are gradually rising.',
+  fertile:    'Your fertile window — chances of conception are higher.',
+  ovulation:  'Ovulation day! Your egg is being released. Peak fertility.',
+  luteal:     'Post-ovulation phase. You may notice PMS symptoms as your cycle winds down.',
+};
+
+const today = new Date().toISOString().split('T')[0];
+
+export default function CalendarScreen() {
+  const { theme } = useTheme();
+  const s = styles(theme);
+
+  const [selectedDate, setSelectedDate] = useState(null);
+  const markedDates = buildMarkedDates(LAST_PERIOD_START);
+  const cycleDay    = getCycleDay(LAST_PERIOD_START);
+
+  const getSelectedInfo = (dateStr) => {
+    const diff = Math.floor(
+      (new Date(dateStr) - new Date(LAST_PERIOD_START)) / (1000 * 60 * 60 * 24)
+    );
+    if (diff < 0 || diff >= CYCLE_LENGTH) return null;
+    const day      = diff + 1;
+    const phaseKey = getPhaseForDay(day);
+    if (!phaseKey) return null;
+    return { day, phaseKey, phase: PHASES[phaseKey] };
+  };
+
+  const onDayPress = (day) => {
+    setSelectedDate((prev) => (prev === day.dateString ? null : day.dateString));
+  };
+
+  const selectedInfo = selectedDate ? getSelectedInfo(selectedDate) : null;
+
+  const displayDate = selectedDate
+    ? new Date(selectedDate).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })
+    : null;
+
+  return (
+    <View style={s.screen}>
+      <View style={s.header}>
+        <Text style={s.headerTitle}>My Cycle</Text>
+        <Text style={s.headerSub}>Day {cycleDay} of {CYCLE_LENGTH}</Text>
+      </View>
+
+      <ScrollView contentContainerStyle={s.content}>
+        <Calendar
+          current={today}
+          onDayPress={onDayPress}
+          markingType="period"
+          markedDates={markedDates}
+          theme={{
+            backgroundColor:        theme.card,
+            calendarBackground:     theme.card,
+            todayTextColor:         theme.primary,
+            arrowColor:             theme.primary,
+            monthTextColor:         theme.text,
+            textMonthFontWeight:    'bold',
+            textDayFontSize:        14,
+            dayTextColor:           theme.text,
+            textDisabledColor:      theme.muted,
+          }}
+          style={[s.calendar, { backgroundColor: theme.card }]}
+        />
+
+        {/* Selected day info */}
+        {selectedInfo ? (
+          <View style={[s.dayCard, { borderLeftColor: selectedInfo.phase.color }]}>
+            <Text style={[s.dayCardTitle, { color: selectedInfo.phase.color }]}>
+              Day {selectedInfo.day} — {selectedInfo.phase.label}
+            </Text>
+            <Text style={s.dayCardDate}>{displayDate}</Text>
+            <Text style={s.dayCardDesc}>{PHASE_DESCRIPTIONS[selectedInfo.phaseKey]}</Text>
+          </View>
+        ) : (
+          <View style={s.tapHint}>
+            <Text style={s.tapHintText}>Tap any date to see phase details</Text>
+          </View>
+        )}
+
+        {/* Legend */}
+        <View style={s.legend}>
+          <Text style={s.legendTitle}>Cycle Phases</Text>
+          {Object.entries(PHASES).map(([key, val]) => (
+            <View key={key} style={s.legendRow}>
+              <View style={[s.legendDot, { backgroundColor: val.color }]} />
+              <Text style={s.legendLabel}>{val.label}</Text>
+              <Text style={s.legendDay}>Day {val.day}</Text>
+            </View>
+          ))}
+          <View style={s.legendRow}>
+            <View style={[s.legendDot, { backgroundColor: PHASES.period.color, opacity: 0.4 }]} />
+            <Text style={s.legendLabel}>Predicted Next Period</Text>
+          </View>
+        </View>
+      </ScrollView>
+    </View>
+  );
+}
+
+const styles = (theme) => StyleSheet.create({
+  screen: { flex: 1, backgroundColor: theme.surface },
+  header: {
+    paddingHorizontal: 20,
+    paddingTop: Platform.OS === 'android' ? 44 : 54,
+    paddingBottom: 14,
+    backgroundColor: theme.card,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.border,
+  },
+  headerTitle: { fontSize: 20, fontWeight: '700', color: theme.text },
+  headerSub:   { fontSize: 13, color: theme.muted, marginTop: 2 },
+  content: { padding: 16, gap: 16, paddingBottom: 32 },
+  calendar: {
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: theme.border,
+    overflow: 'hidden',
+  },
+  dayCard: {
+    backgroundColor: theme.card,
+    borderRadius: 14,
+    padding: 16,
+    borderLeftWidth: 4,
+    ...Platform.select({
+      web:     { boxShadow: '0 2px 8px rgba(0,0,0,0.06)' },
+      default: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 6, elevation: 2 },
+    }),
+  },
+  dayCardTitle: { fontSize: 15, fontWeight: '700', marginBottom: 2 },
+  dayCardDate:  { fontSize: 12, color: theme.muted, marginBottom: 8 },
+  dayCardDesc:  { fontSize: 13, color: theme.subtext, lineHeight: 20 },
+  tapHint: { alignItems: 'center', paddingVertical: 12 },
+  tapHintText: { fontSize: 13, color: theme.muted },
+  legend: {
+    backgroundColor: theme.card,
+    borderRadius: 14,
+    padding: 16,
+    gap: 12,
+    ...Platform.select({
+      web:     { boxShadow: '0 2px 8px rgba(0,0,0,0.06)' },
+      default: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 6, elevation: 2 },
+    }),
+  },
+  legendTitle: { fontSize: 14, fontWeight: '700', color: theme.text, marginBottom: 4 },
+  legendRow:   { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  legendDot:   { width: 14, height: 14, borderRadius: 7 },
+  legendLabel: { flex: 1, fontSize: 13, color: theme.text },
+  legendDay:   { fontSize: 12, color: theme.muted },
+});

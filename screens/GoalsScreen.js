@@ -1,12 +1,6 @@
 import { useState } from 'react';
-import {
-  StyleSheet,
-  Text,
-  View,
-  TouchableOpacity,
-  ScrollView,
-  Platform,
-} from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Platform } from 'react-native';
+import { useTheme } from '../context/ThemeContext';
 
 const GOALS = [
   { id: 1, label: 'Get pregnant', emoji: '🧪' },
@@ -20,7 +14,8 @@ const GOALS = [
 ];
 
 export default function GoalsScreen({ navigation }) {
-
+  const { theme } = useTheme();
+  const styles = makeStyles(theme);
   const [selected, setSelected] = useState([]);
 
   const toggle = (id) => {
@@ -68,94 +63,23 @@ export default function GoalsScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  container: {
-    paddingHorizontal: 16,
-    paddingTop: 24,
-    paddingBottom: 16,
-  },
-  header: {
-    fontSize: 26,
-    fontWeight: 'bold',
-    color: '#222',
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#999',
-    textAlign: 'center',
-    marginBottom: 24,
-  },
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-  },
+const makeStyles = (theme) => StyleSheet.create({
+  screen: { flex: 1, backgroundColor: theme.background },
+  container: { paddingHorizontal: 16, paddingTop: 24, paddingBottom: 16 },
+  header: { fontSize: 26, fontWeight: 'bold', color: theme.text, textAlign: 'center', marginBottom: 8 },
+  subtitle: { fontSize: 14, color: theme.muted, textAlign: 'center', marginBottom: 24 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
   card: {
-    width: '48%',
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 16,
-    alignItems: 'center',
-    marginBottom: 12,
-    ...Platform.select({
-      web: { boxShadow: '0 2px 8px rgba(0,0,0,0.08)' },
-      default: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
-        shadowRadius: 8,
-        elevation: 3,
-      },
-    }),
+    width: '48%', backgroundColor: theme.card, borderRadius: 16, padding: 16, alignItems: 'center', marginBottom: 12,
+    ...Platform.select({ web: { boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }, default: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 3 } }),
   },
-  cardSelected: {
-    borderWidth: 2,
-    borderColor: '#e75480',
-  },
-  iconCircle: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: '#f3e8f0',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 10,
-  },
-  iconCircleSelected: {
-    backgroundColor: '#f8d7e3',
-  },
-  emoji: {
-    fontSize: 32,
-  },
-  cardLabel: {
-    fontSize: 13,
-    color: '#333',
-    textAlign: 'center',
-    fontWeight: '500',
-  },
-  footer: {
-    paddingHorizontal: 24,
-    paddingVertical: 16,
-    backgroundColor: '#fff',
-  },
-  nextBtn: {
-    backgroundColor: '#e75480',
-    borderRadius: 30,
-    paddingVertical: 16,
-    alignItems: 'center',
-  },
-  nextBtnDisabled: {
-    backgroundColor: '#f2b8cc',
-  },
-  nextBtnText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
+  cardSelected: { borderWidth: 2, borderColor: theme.primary },
+  iconCircle: { width: 72, height: 72, borderRadius: 36, backgroundColor: theme.optionBg, alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
+  iconCircleSelected: { backgroundColor: theme.primaryLight },
+  emoji: { fontSize: 32 },
+  cardLabel: { fontSize: 13, color: theme.text, textAlign: 'center', fontWeight: '500' },
+  footer: { paddingHorizontal: 24, paddingVertical: 16, backgroundColor: theme.background },
+  nextBtn: { backgroundColor: theme.primary, borderRadius: 30, paddingVertical: 16, alignItems: 'center' },
+  nextBtnDisabled: { backgroundColor: '#f2b8cc' },
+  nextBtnText: { color: '#fff', fontSize: 16, fontWeight: '600' },
 });

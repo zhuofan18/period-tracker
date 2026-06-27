@@ -1,13 +1,6 @@
 import { useState } from 'react';
-import {
-  StyleSheet,
-  Text,
-  View,
-  TouchableOpacity,
-  ScrollView,
-  TextInput,
-  Platform,
-} from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, ScrollView, TextInput, Platform } from 'react-native';
+import { useTheme } from '../context/ThemeContext';
 
 const QUESTIONS = [
   {
@@ -17,6 +10,12 @@ const QUESTIONS = [
     type: 'input',
     placeholder: 'Enter weight in kg',
     keyboardType: 'numeric',
+  },
+  {
+    id: 'height',
+    question: 'What is your height?',
+    subtitle: 'This helps us personalise your experience.',
+    type: 'height',
   },
   {
     id: 'help_with',
@@ -206,9 +205,15 @@ const QUESTIONS = [
 const TOTAL = QUESTIONS.length;
 
 export default function GeneralInfoScreen({ navigation }) {
+  const { theme } = useTheme();
+  const s = styles(theme);
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState({});
   const [weightValue, setWeightValue] = useState('');
+  const [heightUnit, setHeightUnit] = useState('cm');
+  const [heightCm, setHeightCm] = useState('');
+  const [heightFt, setHeightFt] = useState('');
+  const [heightIn, setHeightIn] = useState('');
 
   const current = QUESTIONS[step];
   const selected = answers[current.id] || [];
@@ -231,7 +236,7 @@ export default function GeneralInfoScreen({ navigation }) {
 
   const goNext = () => {
     if (step < TOTAL - 1) {
-      setStep((s) => s + 1);
+      setStep((n) => n + 1);
     } else {
       navigation.navigate('CycleSetup');
     }
@@ -241,7 +246,7 @@ export default function GeneralInfoScreen({ navigation }) {
     if (step === 0) {
       navigation.goBack();
     } else {
-      setStep((s) => s - 1);
+      setStep((n) => n - 1);
     }
   };
 
@@ -252,56 +257,110 @@ export default function GeneralInfoScreen({ navigation }) {
       ? selected.length > 0
       : current.type === 'input'
       ? weightValue.trim().length > 0
+      : current.type === 'height'
+      ? (heightUnit === 'cm' ? heightCm.trim().length > 0 : heightFt.trim().length > 0)
       : false;
 
   return (
-    <View style={styles.screen}>
+    <View style={s.screen}>
       {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={goBack} style={styles.backBtn}>
-          <Text style={styles.backArrow}>←</Text>
+      <View style={s.header}>
+        <TouchableOpacity onPress={goBack} style={s.backBtn}>
+          <Text style={s.backArrow}>←</Text>
         </TouchableOpacity>
-        <View style={styles.progressBarContainer}>
-          <View style={[styles.progressBarFill, { width: `${progress * 100}%` }]} />
+        <View style={s.progressBarContainer}>
+          <View style={[s.progressBarFill, { width: `${progress * 100}%` }]} />
         </View>
-        <TouchableOpacity onPress={goNext} style={styles.skipBtn}>
-          <Text style={styles.skipText}>Skip</Text>
+        <TouchableOpacity onPress={goNext} style={s.skipBtn}>
+          <Text style={s.skipText}>Skip</Text>
         </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={s.content}>
         {current.subtitle ? (
-          <Text style={styles.subtitle}>{current.subtitle}</Text>
+          <Text style={s.subtitle}>{current.subtitle}</Text>
         ) : null}
 
-        <Text style={styles.question}>{current.question}</Text>
+        <Text style={s.question}>{current.question}</Text>
 
         {current.type === 'input' ? (
           <TextInput
-            style={styles.weightInput}
+            style={s.weightInput}
             placeholder={current.placeholder}
-            placeholderTextColor="#aaa"
+            placeholderTextColor={theme.placeholder}
             keyboardType={current.keyboardType}
             value={weightValue}
             onChangeText={(val) => setWeightValue(val.replace(/[^0-9]/g, ''))}
           />
+        ) : current.type === 'height' ? (
+          <View>
+            <View style={s.unitToggle}>
+              {[['cm', 'Centimeters'], ['ft', 'Feet & Inches']].map(([unit, label]) => (
+                <TouchableOpacity
+                  key={unit}
+                  style={[s.unitBtn, heightUnit === unit && s.unitBtnSelected]}
+                  onPress={() => setHeightUnit(unit)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[s.unitBtnText, heightUnit === unit && s.unitBtnTextSelected]}>
+                    {label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            {heightUnit === 'cm' ? (
+              <TextInput
+                style={s.weightInput}
+                placeholder="e.g. 165"
+                placeholderTextColor={theme.placeholder}
+                keyboardType="numeric"
+                value={heightCm}
+                onChangeText={(val) => setHeightCm(val.replace(/[^0-9]/g, ''))}
+              />
+            ) : (
+              <View style={s.ftInRow}>
+                <View style={s.ftInputWrap}>
+                  <TextInput
+                    style={s.weightInput}
+                    placeholder="ft"
+                    placeholderTextColor={theme.placeholder}
+                    keyboardType="numeric"
+                    value={heightFt}
+                    onChangeText={(val) => setHeightFt(val.replace(/[^0-9]/g, ''))}
+                  />
+                  <Text style={s.ftLabel}>feet</Text>
+                </View>
+                <View style={s.ftInputWrap}>
+                  <TextInput
+                    style={s.weightInput}
+                    placeholder="in"
+                    placeholderTextColor={theme.placeholder}
+                    keyboardType="numeric"
+                    value={heightIn}
+                    onChangeText={(val) => setHeightIn(val.replace(/[^0-9]/g, ''))}
+                  />
+                  <Text style={s.ftLabel}>inches</Text>
+                </View>
+              </View>
+            )}
+          </View>
         ) : (
-          <View style={styles.optionsList}>
+          <View style={s.optionsList}>
             {current.options.map((option) => {
               const active = isSelected(option);
               return (
                 <TouchableOpacity
                   key={option}
-                  style={[styles.option, active && styles.optionSelected]}
+                  style={[s.option, active && s.optionSelected]}
                   onPress={() => toggleOption(option)}
                   activeOpacity={0.8}
                 >
-                  <Text style={[styles.optionText, active && styles.optionTextSelected]}>
+                  <Text style={[s.optionText, active && s.optionTextSelected]}>
                     {option}
                   </Text>
                   {current.type === 'multi' && (
-                    <View style={[styles.radio, active && styles.radioSelected]}>
-                      {active && <View style={styles.radioDot} />}
+                    <View style={[s.radio, active && s.radioSelected]}>
+                      {active && <View style={s.radioDot} />}
                     </View>
                   )}
                 </TouchableOpacity>
@@ -311,14 +370,14 @@ export default function GeneralInfoScreen({ navigation }) {
         )}
       </ScrollView>
 
-      {(current.type === 'multi' || current.type === 'input') && (
-        <View style={styles.footer}>
+      {(current.type === 'multi' || current.type === 'input' || current.type === 'height') && (
+        <View style={s.footer}>
           <TouchableOpacity
-            style={[styles.nextBtn, !canNext && styles.nextBtnDisabled]}
+            style={[s.nextBtn, !canNext && s.nextBtnDisabled]}
             onPress={goNext}
             disabled={!canNext}
           >
-            <Text style={styles.nextBtnText}>Next</Text>
+            <Text style={s.nextBtnText}>Next</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -326,136 +385,37 @@ export default function GeneralInfoScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: Platform.OS === 'android' ? 40 : 50,
-    paddingBottom: 12,
-    gap: 8,
-  },
-  backBtn: {
-    padding: 4,
-  },
-  backArrow: {
-    fontSize: 22,
-    color: '#222',
-  },
-  progressBarContainer: {
-    flex: 1,
-    height: 4,
-    backgroundColor: '#eee',
-    borderRadius: 2,
-    overflow: 'hidden',
-  },
-  progressBarFill: {
-    height: '100%',
-    backgroundColor: '#222',
-    borderRadius: 2,
-  },
-  skipBtn: {
-    padding: 4,
-  },
-  skipText: {
-    fontSize: 14,
-    color: '#999',
-  },
-  content: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 24,
-  },
-  subtitle: {
-    fontSize: 13,
-    color: '#999',
-    textAlign: 'center',
-    marginBottom: 12,
-    lineHeight: 18,
-  },
-  question: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#111',
-    marginBottom: 28,
-    lineHeight: 32,
-  },
-  optionsList: {
-    gap: 10,
-  },
-  option: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#f3f3f3',
-    borderRadius: 12,
-    paddingHorizontal: 18,
-    paddingVertical: 16,
-    borderWidth: 2,
-    borderColor: 'transparent',
-  },
-  optionSelected: {
-    backgroundColor: '#fde8ef',
-    borderColor: '#e75480',
-  },
-  optionText: {
-    fontSize: 15,
-    color: '#222',
-    flex: 1,
-  },
-  optionTextSelected: {
-    color: '#e75480',
-    fontWeight: '600',
-  },
-  radio: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: '#ccc',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: 8,
-  },
-  radioSelected: {
-    borderColor: '#e75480',
-  },
-  radioDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#e75480',
-  },
-  weightInput: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 16,
-    color: '#222',
-  },
-  footer: {
-    paddingHorizontal: 24,
-    paddingVertical: 16,
-    backgroundColor: '#fff',
-  },
-  nextBtn: {
-    backgroundColor: '#e75480',
-    borderRadius: 30,
-    paddingVertical: 16,
-    alignItems: 'center',
-  },
-  nextBtnDisabled: {
-    backgroundColor: '#f2b8cc',
-  },
-  nextBtnText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
+const styles = (theme) => StyleSheet.create({
+  screen: { flex: 1, backgroundColor: theme.background },
+  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: Platform.OS === 'android' ? 40 : 50, paddingBottom: 12, gap: 8 },
+  backBtn: { padding: 4 },
+  backArrow: { fontSize: 22, color: theme.text },
+  progressBarContainer: { flex: 1, height: 4, backgroundColor: theme.border, borderRadius: 2, overflow: 'hidden' },
+  progressBarFill: { height: '100%', backgroundColor: theme.text, borderRadius: 2 },
+  skipBtn: { padding: 4 },
+  skipText: { fontSize: 14, color: theme.muted },
+  content: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 24 },
+  subtitle: { fontSize: 13, color: theme.muted, textAlign: 'center', marginBottom: 12, lineHeight: 18 },
+  question: { fontSize: 24, fontWeight: 'bold', color: theme.text, marginBottom: 28, lineHeight: 32 },
+  optionsList: { gap: 10 },
+  option: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: theme.optionBg, borderRadius: 12, paddingHorizontal: 18, paddingVertical: 16, borderWidth: 2, borderColor: 'transparent' },
+  optionSelected: { backgroundColor: theme.primaryLight, borderColor: theme.primary },
+  optionText: { fontSize: 15, color: theme.text, flex: 1 },
+  optionTextSelected: { color: theme.primary, fontWeight: '600' },
+  radio: { width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: theme.border, alignItems: 'center', justifyContent: 'center', marginLeft: 8 },
+  radioSelected: { borderColor: theme.primary },
+  radioDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: theme.primary },
+  weightInput: { borderWidth: 1, borderColor: theme.inputBorder, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14, fontSize: 16, color: theme.text, backgroundColor: theme.inputBg },
+  unitToggle: { flexDirection: 'row', gap: 10, marginBottom: 16 },
+  unitBtn: { flex: 1, paddingVertical: 12, borderRadius: 12, borderWidth: 2, borderColor: theme.border, backgroundColor: theme.optionBg, alignItems: 'center' },
+  unitBtnSelected: { backgroundColor: theme.primaryLight, borderColor: theme.primary },
+  unitBtnText: { fontSize: 14, color: theme.subtext, fontWeight: '500' },
+  unitBtnTextSelected: { color: theme.primary, fontWeight: '700' },
+  ftInRow: { flexDirection: 'row', gap: 12 },
+  ftInputWrap: { flex: 1 },
+  ftLabel: { fontSize: 12, color: theme.muted, marginTop: 6, textAlign: 'center' },
+  footer: { paddingHorizontal: 24, paddingVertical: 16, backgroundColor: theme.background },
+  nextBtn: { backgroundColor: theme.primary, borderRadius: 30, paddingVertical: 16, alignItems: 'center' },
+  nextBtnDisabled: { backgroundColor: '#f2b8cc' },
+  nextBtnText: { color: '#fff', fontSize: 16, fontWeight: '600' },
 });

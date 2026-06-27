@@ -4,8 +4,6 @@ import { supabase } from '../lib/supabase';
 import { useTheme } from '../context/ThemeContext';
 import { getCycleDay, getPhaseForDay, PHASES } from '../utils/cycleUtils';
 
-const LAST_PERIOD_START = '2026-06-16';
-
 const PHASE_QUESTIONS = {
   period: {
     intro: 'How are you feeling during your period today?',
@@ -58,11 +56,13 @@ export default function DailyLogScreen() {
   const { theme } = useTheme();
   const s = styles(theme);
 
-  const cycleDay  = getCycleDay(LAST_PERIOD_START);
-  const phaseKey  = getPhaseForDay(cycleDay);
-  const phase     = PHASES[phaseKey];
+  const [lastPeriodStart, setLastPeriodStart] = useState(null);
+
+  const today    = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
+  const cycleDay = lastPeriodStart ? getCycleDay(lastPeriodStart) : null;
+  const phaseKey = cycleDay ? getPhaseForDay(cycleDay) : 'follicular';
+  const phase    = PHASES[phaseKey];
   const questions = PHASE_QUESTIONS[phaseKey];
-  const today     = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
 
   const [answers, setAnswers] = useState({});
   const [notes, setNotes]     = useState('');
@@ -70,17 +70,24 @@ export default function DailyLogScreen() {
   const [saved, setSaved]     = useState(false);
 
   useEffect(() => {
-    const loadLog = async () => {
+    const load = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
+      const { data: periods } = await supabase
+        .from('periods')
+        .select('start_date')
+        .eq('user_id', user.id)
+        .order('start_date', { ascending: false })
+        .limit(1);
+      if (periods && periods.length > 0) setLastPeriodStart(periods[0].start_date);
       const todayStr = new Date().toISOString().split('T')[0];
-      const { data } = await supabase.from('daily_logs').select('*').eq('user_id', user.id).eq('log_date', todayStr).single();
-      if (data) {
-        if (data.phase_answers) setAnswers(data.phase_answers);
-        if (data.notes) setNotes(data.notes);
+      const { data: log } = await supabase.from('daily_logs').select('*').eq('user_id', user.id).eq('log_date', todayStr).single();
+      if (log) {
+        if (log.phase_answers) setAnswers(log.phase_answers);
+        if (log.notes) setNotes(log.notes);
       }
     };
-    loadLog();
+    load();
   }, []);
 
   const handleSelect = (title, option, type) => {
@@ -101,7 +108,7 @@ export default function DailyLogScreen() {
         <Text style={s.headerDate}>{today}</Text>
         <Text style={s.headerTitle}>Daily Log</Text>
         <View style={s.phaseBadge}>
-          <Text style={s.phaseBadgeText}>Day {cycleDay} · {phase.label}</Text>
+          <Text style={s.phaseBadgeText}>{cycleDay ? `Day ${cycleDay} · ` : ''}{phase.label}</Text>
         </View>
       </View>
 

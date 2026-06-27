@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { StyleSheet, Text, View, ScrollView, Platform } from 'react-native';
 import { Calendar } from 'react-native-calendars';
+import { useFocusEffect } from '@react-navigation/native';
+import { supabase } from '../lib/supabase';
 import { useTheme } from '../context/ThemeContext';
 import { getCycleDay, getPhaseForDay, PHASES, CYCLE_LENGTH } from '../utils/cycleUtils';
-
-const LAST_PERIOD_START = '2026-06-16';
 
 function addDays(dateStr, n) {
   const d = new Date(dateStr);
@@ -53,13 +53,33 @@ export default function CalendarScreen() {
   const { theme } = useTheme();
   const s = styles(theme);
 
-  const [selectedDate, setSelectedDate] = useState(null);
-  const markedDates = buildMarkedDates(LAST_PERIOD_START);
-  const cycleDay    = getCycleDay(LAST_PERIOD_START);
+  const [lastPeriodStart, setLastPeriodStart] = useState(null);
+  const [selectedDate, setSelectedDate]       = useState(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      const load = async () => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        const { data } = await supabase
+          .from('periods')
+          .select('start_date')
+          .eq('user_id', user.id)
+          .order('start_date', { ascending: false })
+          .limit(1);
+        if (data && data.length > 0) setLastPeriodStart(data[0].start_date);
+      };
+      load();
+    }, [])
+  );
+
+  const markedDates = lastPeriodStart ? buildMarkedDates(lastPeriodStart) : {};
+  const cycleDay    = lastPeriodStart ? getCycleDay(lastPeriodStart) : null;
 
   const getSelectedInfo = (dateStr) => {
+    if (!lastPeriodStart) return null;
     const diff = Math.floor(
-      (new Date(dateStr) - new Date(LAST_PERIOD_START)) / (1000 * 60 * 60 * 24)
+      (new Date(dateStr) - new Date(lastPeriodStart)) / (1000 * 60 * 60 * 24)
     );
     if (diff < 0 || diff >= CYCLE_LENGTH) return null;
     const day      = diff + 1;
@@ -82,7 +102,7 @@ export default function CalendarScreen() {
     <View style={s.screen}>
       <View style={s.header}>
         <Text style={s.headerTitle}>My Cycle</Text>
-        <Text style={s.headerSub}>Day {cycleDay} of {CYCLE_LENGTH}</Text>
+        <Text style={s.headerSub}>{cycleDay ? `Day ${cycleDay} of ${CYCLE_LENGTH}` : 'No period logged yet'}</Text>
       </View>
 
       <ScrollView contentContainerStyle={s.content}>

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, TextInput, Switch, Modal, Linking, Platform, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { supabase } from '../lib/supabase';
 import { useTheme } from '../context/ThemeContext';
 
 export default function ProfileSettingsScreen({ navigation }) {
@@ -15,22 +16,44 @@ export default function ProfileSettingsScreen({ navigation }) {
   const [faqVisible, setFaqVisible]   = useState(false);
 
   useEffect(() => {
-    AsyncStorage.multiGet(['user_firstname', 'user_lastname', 'user_age', 'user_email', 'user_name'])
-      .then(([[, fn], [, ln], [, ag], [, em], [, un]]) => {
-        setFirstName(fn || un || '');
-        setLastName(ln || '');
-        setAge(ag || '');
-        setEmail(em || '');
-      });
+    const loadProfile = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      setEmail(user.email || '');
+      const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+      if (data) {
+        setFirstName(data.first_name || data.username || '');
+        setLastName(data.last_name || '');
+        setAge(data.age ? String(data.age) : '');
+        setWeight(data.weight ? String(data.weight) : '');
+        setHeightUnit(data.height_unit || 'cm');
+        setHeightCm(data.height_cm ? String(data.height_cm) : '');
+        setHeightFt(data.height_ft ? String(data.height_ft) : '');
+        setHeightIn(data.height_in ? String(data.height_in) : '');
+        setCycleLength(data.cycle_length ? String(data.cycle_length) : '28');
+        setPeriodLength(data.period_length ? String(data.period_length) : '5');
+      }
+    };
+    loadProfile();
   }, []);
 
   const saveProfile = async () => {
-    await AsyncStorage.multiSet([
-      ['user_firstname', firstName],
-      ['user_lastname',  lastName],
-      ['user_age',       age],
-      ['user_email',     email],
-    ]);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    await supabase.from('profiles').upsert({
+      id:            user.id,
+      first_name:    firstName,
+      last_name:     lastName,
+      age:           age ? parseInt(age) : null,
+      weight:        weight ? parseFloat(weight) : null,
+      height_unit:   heightUnit,
+      height_cm:     heightCm ? parseFloat(heightCm) : null,
+      height_ft:     heightFt ? parseInt(heightFt) : null,
+      height_in:     heightIn ? parseInt(heightIn) : null,
+      cycle_length:  cycleLength ? parseInt(cycleLength) : 28,
+      period_length: periodLength ? parseInt(periodLength) : 5,
+      updated_at:    new Date().toISOString(),
+    });
   };
   const [weight, setWeight]           = useState('60');
   const [heightUnit, setHeightUnit]   = useState('cm');
@@ -46,12 +69,16 @@ export default function ProfileSettingsScreen({ navigation }) {
   const initials = `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase() || '?';
 
   const handleLogout = () => {
+    const doLogout = async () => {
+      await supabase.auth.signOut();
+      navigation.navigate('Login');
+    };
     if (Platform.OS === 'web') {
-      if (window.confirm('Are you sure you want to log out?')) navigation.navigate('Login');
+      if (window.confirm('Are you sure you want to log out?')) doLogout();
     } else {
       Alert.alert('Log Out', 'Are you sure you want to log out?', [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Log Out', style: 'destructive', onPress: () => navigation.navigate('Login') },
+        { text: 'Log Out', style: 'destructive', onPress: doLogout },
       ]);
     }
   };

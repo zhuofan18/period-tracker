@@ -1,23 +1,32 @@
 import { useState } from 'react';
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { StyleSheet, Text, View, TextInput, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
+import { supabase } from '../lib/supabase';
 import { useTheme } from '../context/ThemeContext';
 
 export default function CreateAccountScreen({ navigation }) {
   const { theme } = useTheme();
   const s = styles(theme);
   const [username, setUsername]               = useState('');
+  const [email, setEmail]                     = useState('');
   const [password, setPassword]               = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword]       = useState(false);
   const [error, setError]                     = useState('');
+  const [loading, setLoading]                 = useState(false);
 
-  const canSubmit = username.trim().length > 0 && password.length >= 6 && confirmPassword.length > 0;
+  const canSubmit = username.trim().length > 0 && email.trim().length > 0 && password.length >= 6 && confirmPassword.length > 0;
 
   const handleCreate = async () => {
     if (password !== confirmPassword) { setError('Passwords do not match.'); return; }
     setError('');
-    await AsyncStorage.setItem('user_name', username.trim());
+    setLoading(true);
+    const { error: signUpError } = await supabase.auth.signUp({
+      email: email.trim(),
+      password,
+      options: { data: { username: username.trim() } },
+    });
+    setLoading(false);
+    if (signUpError) { setError(signUpError.message); return; }
     navigation.navigate('Goals');
   };
 
@@ -33,6 +42,9 @@ export default function CreateAccountScreen({ navigation }) {
         <Text style={s.label}>Username</Text>
         <TextInput style={s.input} placeholder="Choose a username" placeholderTextColor={theme.placeholder} autoCapitalize="none" value={username} onChangeText={setUsername} />
 
+        <Text style={s.label}>Email</Text>
+        <TextInput style={s.input} placeholder="Enter your email" placeholderTextColor={theme.placeholder} autoCapitalize="none" keyboardType="email-address" value={email} onChangeText={setEmail} />
+
         <Text style={s.label}>Password</Text>
         <View style={s.passwordWrapper}>
           <TextInput style={s.passwordInput} placeholder="At least 6 characters" placeholderTextColor={theme.placeholder} secureTextEntry={!showPassword} value={password} onChangeText={setPassword} />
@@ -46,8 +58,8 @@ export default function CreateAccountScreen({ navigation }) {
 
         {error ? <Text style={s.errorText}>{error}</Text> : null}
 
-        <TouchableOpacity style={[s.createBtn, !canSubmit && s.createBtnDisabled]} onPress={handleCreate} disabled={!canSubmit}>
-          <Text style={s.createBtnText}>Create Account</Text>
+        <TouchableOpacity style={[s.createBtn, (!canSubmit || loading) && s.createBtnDisabled]} onPress={handleCreate} disabled={!canSubmit || loading}>
+          {loading ? <ActivityIndicator color="#fff" /> : <Text style={s.createBtnText}>Create Account</Text>}
         </TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>

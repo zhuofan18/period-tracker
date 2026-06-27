@@ -1,8 +1,10 @@
+import { useState, useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Text } from 'react-native';
+import { Text, View, ActivityIndicator } from 'react-native';
+import { supabase } from './lib/supabase';
 
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 
@@ -61,10 +63,32 @@ function MainTabs() {
 
 function AppNavigator() {
   const { theme } = useTheme();
+  const [initialRoute, setInitialRoute] = useState(null);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setInitialRoute(session ? 'MainApp' : 'Login');
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setInitialRoute(session ? 'MainApp' : 'Login');
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  if (!initialRoute) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.background }}>
+        <ActivityIndicator size="large" color={theme.primary} />
+      </View>
+    );
+  }
+
   return (
     <NavigationContainer>
       <StatusBar style={theme.dark ? 'light' : 'dark'} />
-      <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: theme.background } }}>
+      <Stack.Navigator initialRouteName={initialRoute} screenOptions={{ headerShown: false, contentStyle: { backgroundColor: theme.background } }}>
         <Stack.Screen name="Login"           component={LoginScreen} />
         <Stack.Screen name="CreateAccount"   component={CreateAccountScreen} />
         <Stack.Screen name="LoginForm"       component={LoginFormScreen} />

@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { StyleSheet, Text, View, TextInput, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
+import { supabase } from '../lib/supabase';
 import { useTheme } from '../context/ThemeContext';
 
 export default function LoginFormScreen({ navigation }) {
@@ -9,12 +10,20 @@ export default function LoginFormScreen({ navigation }) {
   const [password, setPassword]         = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError]               = useState('');
+  const [loading, setLoading]           = useState(false);
 
   const canLogin = email.trim().length > 0 && password.length >= 6;
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     if (!canLogin) { setError('Please enter your email and password.'); return; }
     setError('');
+    setLoading(true);
+    const { error: loginError } = await supabase.auth.signInWithPassword({
+      email: email.trim(),
+      password,
+    });
+    setLoading(false);
+    if (loginError) { setError(loginError.message); return; }
     navigation.navigate('MainApp');
   };
 
@@ -44,8 +53,8 @@ export default function LoginFormScreen({ navigation }) {
 
         {error ? <Text style={s.errorText}>{error}</Text> : null}
 
-        <TouchableOpacity style={[s.loginBtn, !canLogin && s.loginBtnDisabled]} onPress={handleLogin} disabled={!canLogin}>
-          <Text style={s.loginBtnText}>Log In</Text>
+        <TouchableOpacity style={[s.loginBtn, (!canLogin || loading) && s.loginBtnDisabled]} onPress={handleLogin} disabled={!canLogin || loading}>
+          {loading ? <ActivityIndicator color="#fff" /> : <Text style={s.loginBtnText}>Log In</Text>}
         </TouchableOpacity>
 
         <View style={s.signupRow}>

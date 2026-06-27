@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform } from 'react-native';
+import { StyleSheet, Text, View, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
+import { supabase } from '../lib/supabase';
 import { useTheme } from '../context/ThemeContext';
 
 export default function ForgotPasswordScreen({ navigation }) {
@@ -7,6 +8,8 @@ export default function ForgotPasswordScreen({ navigation }) {
   const s = styles(theme);
   const [email, setEmail]         = useState('');
   const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading]     = useState(false);
+  const [error, setError]         = useState('');
 
   const canSubmit = email.trim().length > 0 && email.includes('@');
 
@@ -45,8 +48,19 @@ export default function ForgotPasswordScreen({ navigation }) {
         <Text style={s.sub}>Enter the email address linked to your account and we'll send you a reset link.</Text>
         <Text style={s.label}>Email Address</Text>
         <TextInput style={s.input} placeholder="Enter your email" placeholderTextColor={theme.placeholder} keyboardType="email-address" autoCapitalize="none" value={email} onChangeText={setEmail} />
-        <TouchableOpacity style={[s.submitBtn, !canSubmit && s.submitBtnDisabled]} onPress={() => setSubmitted(true)} disabled={!canSubmit}>
-          <Text style={s.submitBtnText}>Send Reset Link</Text>
+        {error ? <Text style={{ color: '#e74c3c', fontSize: 13, marginBottom: 12 }}>{error}</Text> : null}
+        <TouchableOpacity
+          style={[s.submitBtn, (!canSubmit || loading) && s.submitBtnDisabled]}
+          onPress={async () => {
+            setLoading(true); setError('');
+            const { error: err } = await supabase.auth.resetPasswordForEmail(email.trim());
+            setLoading(false);
+            if (err) { setError(err.message); return; }
+            setSubmitted(true);
+          }}
+          disabled={!canSubmit || loading}
+        >
+          {loading ? <ActivityIndicator color="#fff" /> : <Text style={s.submitBtnText}>Send Reset Link</Text>}
         </TouchableOpacity>
         <TouchableOpacity onPress={() => navigation.goBack()} style={s.backToLogin}>
           <Text style={s.backToLoginText}>← Back to Login</Text>

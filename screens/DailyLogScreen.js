@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, TextInput, Platform } from 'react-native';
+import { supabase } from '../lib/supabase';
 import { useTheme } from '../context/ThemeContext';
 import { getCycleDay, getPhaseForDay, PHASES } from '../utils/cycleUtils';
 
@@ -65,6 +66,22 @@ export default function DailyLogScreen() {
 
   const [answers, setAnswers] = useState({});
   const [notes, setNotes]     = useState('');
+  const [saving, setSaving]   = useState(false);
+  const [saved, setSaved]     = useState(false);
+
+  useEffect(() => {
+    const loadLog = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const todayStr = new Date().toISOString().split('T')[0];
+      const { data } = await supabase.from('daily_logs').select('*').eq('user_id', user.id).eq('log_date', todayStr).single();
+      if (data) {
+        if (data.phase_answers) setAnswers(data.phase_answers);
+        if (data.notes) setNotes(data.notes);
+      }
+    };
+    loadLog();
+  }, []);
 
   const handleSelect = (title, option, type) => {
     setAnswers((prev) => {
@@ -119,8 +136,26 @@ export default function DailyLogScreen() {
           <TextInput style={s.notesInput} placeholder="How are you feeling today? Any other symptoms or thoughts..." placeholderTextColor={theme.placeholder} multiline numberOfLines={5} value={notes} onChangeText={setNotes} textAlignVertical="top" />
         </View>
 
-        <TouchableOpacity style={[s.saveBtn, { backgroundColor: phase.color }]}>
-          <Text style={s.saveBtnText}>Save Today's Log</Text>
+        <TouchableOpacity
+          style={[s.saveBtn, { backgroundColor: saved ? '#4CAF50' : phase.color }]}
+          onPress={async () => {
+            setSaving(true);
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+              const todayStr = new Date().toISOString().split('T')[0];
+              await supabase.from('daily_logs').upsert({
+                user_id:       user.id,
+                log_date:      todayStr,
+                phase_answers: answers,
+                notes,
+                updated_at:    new Date().toISOString(),
+              }, { onConflict: 'user_id,log_date' });
+              setSaved(true);
+            }
+            setSaving(false);
+          }}
+        >
+          <Text style={s.saveBtnText}>{saved ? 'Saved ✓' : saving ? 'Saving...' : "Save Today's Log"}</Text>
         </TouchableOpacity>
       </ScrollView>
     </View>

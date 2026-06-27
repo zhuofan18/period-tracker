@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform } from 'react-native';
+import { StyleSheet, Text, View, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
+import { supabase } from '../lib/supabase';
 import { useTheme } from '../context/ThemeContext';
 
 export default function ResetPasswordScreen({ navigation, route }) {
@@ -12,11 +13,16 @@ export default function ResetPasswordScreen({ navigation, route }) {
   const [error, setError]                     = useState('');
   const [done, setDone]                       = useState(false);
 
+  const [loading, setLoading] = useState(false);
   const canSubmit = password.length >= 6 && confirmPassword.length > 0;
 
-  const handleReset = () => {
+  const handleReset = async () => {
     if (password !== confirmPassword) { setError('Passwords do not match.'); return; }
     setError('');
+    setLoading(true);
+    const { error: err } = await supabase.auth.updateUser({ password });
+    setLoading(false);
+    if (err) { setError(err.message); return; }
     setDone(true);
   };
 

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, ScrollView, TextInput, Platform } from 'react-native';
+import { supabase } from '../lib/supabase';
 import { useTheme } from '../context/ThemeContext';
 
 const QUESTIONS = [
@@ -234,10 +235,22 @@ export default function GeneralInfoScreen({ navigation }) {
     }
   };
 
-  const goNext = () => {
+  const goNext = async () => {
     if (step < TOTAL - 1) {
       setStep((n) => n + 1);
     } else {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase.from('profiles').upsert({
+          id:           user.id,
+          weight:       weightValue ? parseFloat(weightValue) : null,
+          height_unit:  heightUnit,
+          height_cm:    heightCm ? parseFloat(heightCm) : null,
+          height_ft:    heightFt ? parseInt(heightFt) : null,
+          height_in:    heightIn ? parseInt(heightIn) : null,
+          updated_at:   new Date().toISOString(),
+        });
+      }
       navigation.navigate('CycleSetup');
     }
   };

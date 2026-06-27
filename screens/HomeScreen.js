@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Modal, Platform } from 'react-native';
 import { Calendar } from 'react-native-calendars';
 import { useFocusEffect } from '@react-navigation/native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { supabase } from '../lib/supabase';
 import { useTheme } from '../context/ThemeContext';
 import { getCycleDay, getPhaseForDay, getDaysUntilNextPeriod, getNextPeriodDate, PHASES, CYCLE_LENGTH } from '../utils/cycleUtils';
 
@@ -36,9 +36,20 @@ export default function HomeScreen({ navigation }) {
 
   useFocusEffect(
     useCallback(() => {
-      AsyncStorage.multiGet(['user_firstname', 'user_name']).then(([[, firstName], [, username]]) => {
-        setDisplayName(firstName || username || '');
-      });
+      const load = async () => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        const { data: profile } = await supabase.from('profiles').select('first_name, username').eq('id', user.id).single();
+        if (profile) setDisplayName(profile.first_name || profile.username || '');
+        const { data: periods } = await supabase
+          .from('periods')
+          .select('start_date')
+          .eq('user_id', user.id)
+          .order('start_date', { ascending: false })
+          .limit(1);
+        if (periods && periods.length > 0) setLastPeriodStart(periods[0].start_date);
+      };
+      load();
     }, [])
   );
 
@@ -53,9 +64,13 @@ export default function HomeScreen({ navigation }) {
     setModalVisible(true);
   };
 
-  const confirmPeriod = () => {
-    if (pickedDate) setLastPeriodStart(pickedDate);
+  const confirmPeriod = async () => {
+    if (!pickedDate) return;
+    setLastPeriodStart(pickedDate);
     setModalVisible(false);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    await supabase.from('periods').insert({ user_id: user.id, start_date: pickedDate });
   };
 
   const days = Array.from({ length: CYCLE_LENGTH }, (_, i) => i + 1);

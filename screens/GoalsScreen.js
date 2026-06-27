@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Platform } from 'react-native';
+import { supabase } from '../lib/supabase';
 import { useTheme } from '../context/ThemeContext';
 
 const GOALS = [
@@ -54,7 +55,14 @@ export default function GoalsScreen({ navigation }) {
         <TouchableOpacity
           style={[styles.nextBtn, selected.length === 0 && styles.nextBtnDisabled]}
           disabled={selected.length === 0}
-          onPress={() => navigation.navigate('GeneralInfo')}
+          onPress={async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+              const goalLabels = GOALS.filter(g => selected.includes(g.id)).map(g => g.label);
+              await supabase.from('user_goals').upsert({ user_id: user.id, goals: goalLabels });
+            }
+            navigation.navigate('GeneralInfo');
+          }}
         >
           <Text style={styles.nextBtnText}>Next</Text>
         </TouchableOpacity>

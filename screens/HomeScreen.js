@@ -4,7 +4,7 @@ import { Calendar } from 'react-native-calendars';
 import { useFocusEffect } from '@react-navigation/native';
 import { supabase } from '../lib/supabase';
 import { useTheme } from '../context/ThemeContext';
-import { getCycleDay, getPhaseForDay, getDaysUntilNextPeriod, getNextPeriodDate, PHASES, CYCLE_LENGTH } from '../utils/cycleUtils';
+import { getCycleDay, getPhaseForDay, getDaysUntilNextPeriod, getNextPeriodDate, PHASES, CYCLE_LENGTH, PERIOD_LENGTH } from '../utils/cycleUtils';
 
 function getGreeting() {
   const h = new Date().getHours();
@@ -34,6 +34,8 @@ export default function HomeScreen({ navigation }) {
   const [modalVisible, setModalVisible]       = useState(false);
   const [pickedDate, setPickedDate]           = useState(null);
   const [displayName, setDisplayName]         = useState('');
+  const [cycleLength, setCycleLength]         = useState(CYCLE_LENGTH);
+  const [periodLength, setPeriodLength]       = useState(PERIOD_LENGTH);
 
   useFocusEffect(
     useCallback(() => {
@@ -41,8 +43,12 @@ export default function HomeScreen({ navigation }) {
         setLoading(true);
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) { setLoading(false); return; }
-        const { data: profile } = await supabase.from('profiles').select('first_name, username').eq('id', user.id).single();
-        if (profile) setDisplayName(profile.first_name || profile.username || '');
+        const { data: profile } = await supabase.from('profiles').select('first_name, username, cycle_length, period_length').eq('id', user.id).single();
+        if (profile) {
+          setDisplayName(profile.first_name || profile.username || '');
+          if (profile.cycle_length)  setCycleLength(profile.cycle_length);
+          if (profile.period_length) setPeriodLength(profile.period_length);
+        }
         const { data: periods } = await supabase
           .from('periods')
           .select('start_date')
@@ -56,11 +62,11 @@ export default function HomeScreen({ navigation }) {
     }, [])
   );
 
-  const cycleDay   = lastPeriodStart ? getCycleDay(lastPeriodStart) : null;
-  const phaseKey   = cycleDay ? getPhaseForDay(cycleDay) : 'follicular';
+  const cycleDay   = lastPeriodStart ? getCycleDay(lastPeriodStart, cycleLength) : null;
+  const phaseKey   = cycleDay ? getPhaseForDay(cycleDay, periodLength) : 'follicular';
   const phase      = PHASES[phaseKey];
-  const daysLeft   = lastPeriodStart ? getDaysUntilNextPeriod(lastPeriodStart) : null;
-  const nextPeriod = lastPeriodStart ? getNextPeriodDate(lastPeriodStart) : null;
+  const daysLeft   = lastPeriodStart ? getDaysUntilNextPeriod(lastPeriodStart, cycleLength) : null;
+  const nextPeriod = lastPeriodStart ? getNextPeriodDate(lastPeriodStart, cycleLength) : null;
 
   const openModal = () => {
     setPickedDate(today);
@@ -76,12 +82,17 @@ export default function HomeScreen({ navigation }) {
     await supabase.from('periods').insert({ user_id: user.id, start_date: pickedDate });
   };
 
-  const days = Array.from({ length: CYCLE_LENGTH }, (_, i) => i + 1);
+  const days = Array.from({ length: cycleLength }, (_, i) => i + 1);
 
   return (
     <View style={s.screen}>
       <View style={[s.header, { backgroundColor: phase.color }]}>
-        <Text style={s.greeting}>{getGreeting()}{displayName ? `, ${displayName}` : ''} 👋</Text>
+        <View style={s.headerTopRow}>
+          <Text style={s.greeting}>{getGreeting()}{displayName ? `, ${displayName}` : ''} 👋</Text>
+          <TouchableOpacity onPress={() => navigation.navigate('Chat')} style={s.chatBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <Text style={s.chatBtnText}>⋯</Text>
+          </TouchableOpacity>
+        </View>
         <Text style={s.headerSub}>Here's your cycle overview for today</Text>
       </View>
 
@@ -227,7 +238,10 @@ export default function HomeScreen({ navigation }) {
 const styles = (theme) => StyleSheet.create({
   screen: { flex: 1, backgroundColor: theme.surface },
   header: { paddingHorizontal: 20, paddingTop: Platform.OS === 'android' ? 44 : 54, paddingBottom: 20 },
-  greeting: { fontSize: 20, fontWeight: '700', color: '#fff', marginBottom: 4 },
+  headerTopRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 4 },
+  greeting: { fontSize: 20, fontWeight: '700', color: '#fff', flex: 1 },
+  chatBtn: { padding: 4, marginTop: -2 },
+  chatBtnText: { color: 'rgba(255,255,255,0.9)', fontSize: 26, letterSpacing: 2, fontWeight: '300' },
   headerSub: { fontSize: 13, color: 'rgba(255,255,255,0.8)' },
   content: { padding: 16, gap: 16 },
   mainCard: {

@@ -13,7 +13,10 @@ export default function ProfileSettingsScreen({ navigation }) {
   const [lastName, setLastName]       = useState('');
   const [age, setAge]                 = useState('');
   const [email, setEmail]             = useState('');
-  const [faqVisible, setFaqVisible]   = useState(false);
+  const [faqVisible, setFaqVisible]         = useState(false);
+  const [privacyVisible, setPrivacyVisible] = useState(false);
+  const [termsVisible, setTermsVisible]     = useState(false);
+  const [contactVisible, setContactVisible] = useState(false);
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -55,11 +58,11 @@ export default function ProfileSettingsScreen({ navigation }) {
       updated_at:    new Date().toISOString(),
     });
   };
-  const [weight, setWeight]           = useState('60');
+  const [weight, setWeight]           = useState('');
   const [heightUnit, setHeightUnit]   = useState('cm');
-  const [heightCm, setHeightCm]       = useState('165');
-  const [heightFt, setHeightFt]       = useState('5');
-  const [heightIn, setHeightIn]       = useState('5');
+  const [heightCm, setHeightCm]       = useState('');
+  const [heightFt, setHeightFt]       = useState('');
+  const [heightIn, setHeightIn]       = useState('');
   const [cycleLength, setCycleLength] = useState('28');
   const [periodLength, setPeriodLength] = useState('5');
   const [periodReminder, setPeriodReminder]   = useState(true);
@@ -86,7 +89,12 @@ export default function ProfileSettingsScreen({ navigation }) {
   return (
     <View style={s.screen}>
       <View style={s.header}>
-        <Text style={s.headerTitle}>Profile & Settings</Text>
+        <View style={s.headerTopRow}>
+          <Text style={s.headerTitle}>Profile & Settings</Text>
+          <TouchableOpacity onPress={() => navigation.navigate('Chat')} style={s.chatBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <Text style={s.chatBtnText}>⋯</Text>
+          </TouchableOpacity>
+        </View>
       </View>
       <ScrollView contentContainerStyle={s.content}>
 
@@ -274,11 +282,11 @@ export default function ProfileSettingsScreen({ navigation }) {
         <View style={s.section}>
           <Text style={s.sectionTitle}>About</Text>
           {[
-            { label: 'Version',        right: '1.0.0', onPress: null },
-            { label: 'Privacy Policy', right: '›',     onPress: () => Linking.openURL('https://periodtracker.app/privacy') },
-            { label: 'Terms of Service', right: '›',   onPress: () => Linking.openURL('https://periodtracker.app/terms') },
-            { label: 'Contact Us',     right: '›',     onPress: () => Linking.openURL('mailto:support@periodtracker.app') },
-            { label: 'FAQ',            right: '›',     onPress: () => setFaqVisible(true) },
+            { label: 'Version',          right: '1.0.0', onPress: null },
+            { label: 'Privacy Policy',   right: '›',     onPress: () => setPrivacyVisible(true) },
+            { label: 'Terms of Service', right: '›',     onPress: () => setTermsVisible(true) },
+            { label: 'Contact Us',       right: '›',     onPress: () => setContactVisible(true) },
+            { label: 'FAQ',              right: '›',     onPress: () => setFaqVisible(true) },
           ].map(({ label, right, onPress }, i, arr) => (
             <TouchableOpacity
               key={label}
@@ -302,18 +310,105 @@ export default function ProfileSettingsScreen({ navigation }) {
                   <Text style={s.modalClose}>✕</Text>
                 </TouchableOpacity>
               </View>
-              {[
-                { q: 'How is my next period date calculated?', a: 'We use your last period start date and your average cycle length to predict your next period.' },
-                { q: 'What is the fertile window?', a: 'Your fertile window is the days around ovulation when pregnancy is most likely — typically days 10–17 of your cycle.' },
-                { q: 'How accurate is the cycle prediction?', a: 'Predictions improve with more logged data. Cycles naturally vary, so predictions are estimates rather than guarantees.' },
-                { q: 'How do I update my cycle length?', a: 'Go to Profile & Settings, tap Edit in the Personal Information section, and update your Cycle Length.' },
-                { q: 'How do I log a new period start?', a: 'On the Home screen, tap the "My period started" card at the bottom to select your period start date.' },
-              ].map(({ q, a }, i) => (
-                <View key={i} style={s.faqItem}>
-                  <Text style={s.faqQ}>{q}</Text>
-                  <Text style={s.faqA}>{a}</Text>
-                </View>
-              ))}
+              <ScrollView showsVerticalScrollIndicator={false}>
+                {[
+                  { q: 'How is my next period date calculated?', a: 'We use your last period start date and your average cycle length to predict your next period.' },
+                  { q: 'What is the fertile window?', a: 'Your fertile window is the days around ovulation when pregnancy is most likely — typically days 10–17 of your cycle.' },
+                  { q: 'How accurate is the cycle prediction?', a: 'Predictions improve with more logged data. Cycles naturally vary, so predictions are estimates rather than guarantees.' },
+                  { q: 'How do I update my cycle length?', a: 'Go to Profile & Settings, tap Edit in the Personal Information section, and update your Cycle Length.' },
+                  { q: 'How do I log a new period start?', a: 'On the Home screen, tap the "My period started" card at the bottom to select your period start date.' },
+                  { q: 'Is my data private?', a: 'Yes. Your data is stored securely and is never shared with third parties. Only you can access your cycle information.' },
+                  { q: 'How do I delete my account?', a: 'Please contact us through the Contact Us section and we will delete your account and data within 30 days.' },
+                ].map(({ q, a }, i) => (
+                  <View key={i} style={s.faqItem}>
+                    <Text style={s.faqQ}>{q}</Text>
+                    <Text style={s.faqA}>{a}</Text>
+                  </View>
+                ))}
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Privacy Policy Modal */}
+        <Modal visible={privacyVisible} transparent animationType="slide" onRequestClose={() => setPrivacyVisible(false)}>
+          <View style={s.modalOverlay}>
+            <View style={s.modalCard}>
+              <View style={s.modalHeader}>
+                <Text style={s.modalTitle}>Privacy Policy</Text>
+                <TouchableOpacity onPress={() => setPrivacyVisible(false)}>
+                  <Text style={s.modalClose}>✕</Text>
+                </TouchableOpacity>
+              </View>
+              <ScrollView showsVerticalScrollIndicator={false}>
+                {[
+                  { heading: 'Data We Collect', body: 'We collect the information you provide during sign-up (name, email, age, height, weight) and the health data you log in the app (period dates, cycle length, symptoms, daily logs, and notes).' },
+                  { heading: 'How We Use Your Data', body: 'Your data is used solely to provide cycle tracking features, generate predictions, and personalise your experience. We do not sell or share your personal data with third parties.' },
+                  { heading: 'Data Storage & Security', body: 'Your data is stored securely using Supabase with Row Level Security — only your account can access your data. We use industry-standard encryption in transit and at rest.' },
+                  { heading: 'Your Rights', body: 'You can view, edit, or delete your personal information at any time via the Profile & Settings screen. To request full account deletion, please contact us.' },
+                  { heading: 'Contact', body: 'If you have any privacy concerns, please reach out via the Contact Us section in this app.' },
+                ].map(({ heading, body }, i) => (
+                  <View key={i} style={s.policySection}>
+                    <Text style={s.policyHeading}>{heading}</Text>
+                    <Text style={s.policyBody}>{body}</Text>
+                  </View>
+                ))}
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Terms of Service Modal */}
+        <Modal visible={termsVisible} transparent animationType="slide" onRequestClose={() => setTermsVisible(false)}>
+          <View style={s.modalOverlay}>
+            <View style={s.modalCard}>
+              <View style={s.modalHeader}>
+                <Text style={s.modalTitle}>Terms of Service</Text>
+                <TouchableOpacity onPress={() => setTermsVisible(false)}>
+                  <Text style={s.modalClose}>✕</Text>
+                </TouchableOpacity>
+              </View>
+              <ScrollView showsVerticalScrollIndicator={false}>
+                {[
+                  { heading: 'Acceptance of Terms', body: 'By using this app, you agree to these Terms of Service. If you do not agree, please do not use the app.' },
+                  { heading: 'Not Medical Advice', body: 'This app provides general cycle tracking and wellness information only. It is not a substitute for professional medical advice, diagnosis, or treatment. Always consult a qualified healthcare provider for medical concerns.' },
+                  { heading: 'Account Responsibility', body: 'You are responsible for maintaining the confidentiality of your account credentials and for all activity under your account.' },
+                  { heading: 'Accuracy of Information', body: 'Cycle predictions are estimates based on your logged data. Cycles naturally vary and predictions may not always be accurate. Do not rely on this app as a method of contraception.' },
+                  { heading: 'Prohibited Use', body: 'You may not use this app for any unlawful purpose or in any way that could harm other users or the service.' },
+                  { heading: 'Changes to Terms', body: 'We may update these terms from time to time. Continued use of the app after changes constitutes acceptance of the new terms.' },
+                ].map(({ heading, body }, i) => (
+                  <View key={i} style={s.policySection}>
+                    <Text style={s.policyHeading}>{heading}</Text>
+                    <Text style={s.policyBody}>{body}</Text>
+                  </View>
+                ))}
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Contact Us Modal */}
+        <Modal visible={contactVisible} transparent animationType="slide" onRequestClose={() => setContactVisible(false)}>
+          <View style={s.modalOverlay}>
+            <View style={s.modalCard}>
+              <View style={s.modalHeader}>
+                <Text style={s.modalTitle}>Contact Us</Text>
+                <TouchableOpacity onPress={() => setContactVisible(false)}>
+                  <Text style={s.modalClose}>✕</Text>
+                </TouchableOpacity>
+              </View>
+              <Text style={s.contactBody}>
+                Have a question, found a bug, or want to give feedback? We'd love to hear from you.
+              </Text>
+              <TouchableOpacity
+                style={s.contactEmailBtn}
+                onPress={() => Linking.openURL('mailto:markyuki18@gmail.com?subject=Period%20Tracker%20Support')}
+                activeOpacity={0.8}
+              >
+                <Text style={s.contactEmailLabel}>Email Support</Text>
+                <Text style={s.contactEmailAddr}>markyuki18@gmail.com</Text>
+              </TouchableOpacity>
+              <Text style={s.contactNote}>We aim to respond within 2–3 business days.</Text>
             </View>
           </View>
         </Modal>
@@ -329,8 +424,11 @@ export default function ProfileSettingsScreen({ navigation }) {
 
 const styles = (theme) => StyleSheet.create({
   screen: { flex: 1, backgroundColor: theme.surface },
-  header: { paddingHorizontal: 20, paddingTop: Platform.OS === 'android' ? 40 : 50, paddingBottom: 14, backgroundColor: theme.card, borderBottomWidth: 1, borderBottomColor: theme.border },
-  headerTitle: { fontSize: 20, fontWeight: '700', color: theme.text },
+  header:       { paddingHorizontal: 20, paddingTop: Platform.OS === 'android' ? 40 : 50, paddingBottom: 14, backgroundColor: theme.card, borderBottomWidth: 1, borderBottomColor: theme.border },
+  headerTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  headerTitle:  { fontSize: 20, fontWeight: '700', color: theme.text },
+  chatBtn:      { padding: 4 },
+  chatBtnText:  { color: theme.muted, fontSize: 24, letterSpacing: 2, fontWeight: '400' },
   content: { padding: 20, gap: 20 },
   avatarSection: { alignItems: 'center', paddingVertical: 8 },
   avatar: { width: 80, height: 80, borderRadius: 40, backgroundColor: theme.primary, alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
@@ -378,6 +476,14 @@ const styles = (theme) => StyleSheet.create({
   faqItem: { marginBottom: 18 },
   faqQ: { fontSize: 14, fontWeight: '700', color: theme.text, marginBottom: 4 },
   faqA: { fontSize: 13, color: theme.subtext, lineHeight: 20 },
+  policySection: { marginBottom: 18 },
+  policyHeading: { fontSize: 14, fontWeight: '700', color: theme.text, marginBottom: 4 },
+  policyBody:    { fontSize: 13, color: theme.subtext, lineHeight: 20 },
+  contactBody:   { fontSize: 14, color: theme.subtext, lineHeight: 21, marginBottom: 20 },
+  contactEmailBtn:  { backgroundColor: theme.optionBg, borderRadius: 12, padding: 16, borderWidth: 1.5, borderColor: theme.primary, marginBottom: 12 },
+  contactEmailLabel: { fontSize: 12, color: theme.muted, marginBottom: 4 },
+  contactEmailAddr:  { fontSize: 15, fontWeight: '700', color: theme.primary },
+  contactNote:  { fontSize: 12, color: theme.muted, textAlign: 'center' },
   logoutBtn: { backgroundColor: theme.card, borderRadius: 16, paddingVertical: 16, alignItems: 'center', borderWidth: 1.5, borderColor: '#ff4d4d' },
   logoutText: { fontSize: 15, fontWeight: '700', color: '#ff4d4d' },
 });

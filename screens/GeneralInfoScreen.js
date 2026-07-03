@@ -19,6 +19,22 @@ const QUESTIONS = [
     type: 'height',
   },
   {
+    id: 'cycle_length',
+    question: 'How long is your typical cycle?',
+    subtitle: 'Count the days from the first day of one period to the first day of the next.',
+    type: 'numeric-input',
+    placeholder: 'e.g. 28',
+    unit: 'days',
+  },
+  {
+    id: 'period_length',
+    question: 'How long does your period usually last?',
+    subtitle: 'Count from the first day of bleeding to the last.',
+    type: 'numeric-input',
+    placeholder: 'e.g. 5',
+    unit: 'days',
+  },
+  {
     id: 'help_with',
     question: 'What can we help you do?',
     subtitle: 'Choose as many as you like.',
@@ -210,11 +226,13 @@ export default function GeneralInfoScreen({ navigation }) {
   const s = styles(theme);
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState({});
-  const [weightValue, setWeightValue] = useState('');
-  const [heightUnit, setHeightUnit] = useState('cm');
-  const [heightCm, setHeightCm] = useState('');
-  const [heightFt, setHeightFt] = useState('');
-  const [heightIn, setHeightIn] = useState('');
+  const [weightValue, setWeightValue]       = useState('');
+  const [heightUnit, setHeightUnit]         = useState('cm');
+  const [heightCm, setHeightCm]             = useState('');
+  const [heightFt, setHeightFt]             = useState('');
+  const [heightIn, setHeightIn]             = useState('');
+  const [cycleLengthValue, setCycleLengthValue]   = useState('28');
+  const [periodLengthValue, setPeriodLengthValue] = useState('5');
 
   const current = QUESTIONS[step];
   const selected = answers[current.id] || [];
@@ -242,13 +260,15 @@ export default function GeneralInfoScreen({ navigation }) {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         await supabase.from('profiles').upsert({
-          id:           user.id,
-          weight:       weightValue ? parseFloat(weightValue) : null,
-          height_unit:  heightUnit,
-          height_cm:    heightCm ? parseFloat(heightCm) : null,
-          height_ft:    heightFt ? parseInt(heightFt) : null,
-          height_in:    heightIn ? parseInt(heightIn) : null,
-          updated_at:   new Date().toISOString(),
+          id:            user.id,
+          weight:        weightValue ? parseFloat(weightValue) : null,
+          height_unit:   heightUnit,
+          height_cm:     heightCm ? parseFloat(heightCm) : null,
+          height_ft:     heightFt ? parseInt(heightFt) : null,
+          height_in:     heightIn ? parseInt(heightIn) : null,
+          cycle_length:  cycleLengthValue ? parseInt(cycleLengthValue) : 28,
+          period_length: periodLengthValue ? parseInt(periodLengthValue) : 5,
+          updated_at:    new Date().toISOString(),
         });
       }
       navigation.navigate('CycleSetup');
@@ -272,6 +292,8 @@ export default function GeneralInfoScreen({ navigation }) {
       ? weightValue.trim().length > 0
       : current.type === 'height'
       ? (heightUnit === 'cm' ? heightCm.trim().length > 0 : heightFt.trim().length > 0)
+      : current.type === 'numeric-input'
+      ? (current.id === 'cycle_length' ? cycleLengthValue.trim().length > 0 : periodLengthValue.trim().length > 0)
       : false;
 
   return (
@@ -305,6 +327,22 @@ export default function GeneralInfoScreen({ navigation }) {
             value={weightValue}
             onChangeText={(val) => setWeightValue(val.replace(/[^0-9]/g, ''))}
           />
+        ) : current.type === 'numeric-input' ? (
+          <View>
+            <TextInput
+              style={s.weightInput}
+              placeholder={current.placeholder}
+              placeholderTextColor={theme.placeholder}
+              keyboardType="numeric"
+              value={current.id === 'cycle_length' ? cycleLengthValue : periodLengthValue}
+              onChangeText={(val) => {
+                const clean = val.replace(/[^0-9]/g, '');
+                if (current.id === 'cycle_length') setCycleLengthValue(clean);
+                else setPeriodLengthValue(clean);
+              }}
+            />
+            <Text style={s.unitLabel}>{current.unit}</Text>
+          </View>
         ) : current.type === 'height' ? (
           <View>
             <View style={s.unitToggle}>
@@ -383,7 +421,7 @@ export default function GeneralInfoScreen({ navigation }) {
         )}
       </ScrollView>
 
-      {(current.type === 'multi' || current.type === 'input' || current.type === 'height') && (
+      {(current.type === 'multi' || current.type === 'input' || current.type === 'height' || current.type === 'numeric-input') && (
         <View style={s.footer}>
           <TouchableOpacity
             style={[s.nextBtn, !canNext && s.nextBtnDisabled]}
@@ -419,6 +457,7 @@ const styles = (theme) => StyleSheet.create({
   radioSelected: { borderColor: theme.primary },
   radioDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: theme.primary },
   weightInput: { borderWidth: 1, borderColor: theme.inputBorder, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14, fontSize: 16, color: theme.text, backgroundColor: theme.inputBg },
+  unitLabel:   { fontSize: 13, color: theme.muted, marginTop: 8, textAlign: 'center' },
   unitToggle: { flexDirection: 'row', gap: 10, marginBottom: 16 },
   unitBtn: { flex: 1, paddingVertical: 12, borderRadius: 12, borderWidth: 2, borderColor: theme.border, backgroundColor: theme.optionBg, alignItems: 'center' },
   unitBtnSelected: { backgroundColor: theme.primaryLight, borderColor: theme.primary },

@@ -7,8 +7,10 @@ import {
   ScrollView,
   TextInput,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { Calendar } from 'react-native-calendars';
+import { supabase } from '../lib/supabase';
 import { useTheme } from '../context/ThemeContext';
 
 const CYCLE_LENGTH = 28;
@@ -92,6 +94,7 @@ export default function CycleCalendarScreen({ navigation }) {
   const [flow, setFlow]                 = useState(null);
   const [symptoms, setSymptoms]         = useState('');
   const [moods, setMoods]               = useState([]);
+  const [saving, setSaving]             = useState(false);
 
   const onDayPress = (day) => {
     const dateStr = day.dateString;
@@ -216,11 +219,25 @@ export default function CycleCalendarScreen({ navigation }) {
 
       <View style={s.footer}>
         <TouchableOpacity
-          style={[s.continueBtn, !selectedDate && s.continueBtnDisabled]}
-          disabled={!selectedDate}
-          onPress={() => navigation.navigate('MainApp')}
+          style={[s.continueBtn, (!selectedDate || saving) && s.continueBtnDisabled]}
+          disabled={!selectedDate || saving}
+          onPress={async () => {
+            if (!selectedDate) return;
+            setSaving(true);
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+              await supabase.from('periods').insert({
+                user_id:    user.id,
+                start_date: selectedDate,
+              });
+            }
+            setSaving(false);
+            navigation.navigate('MainApp');
+          }}
         >
-          <Text style={s.continueBtnText}>Continue</Text>
+          {saving
+            ? <ActivityIndicator color="#fff" />
+            : <Text style={s.continueBtnText}>Continue</Text>}
         </TouchableOpacity>
       </View>
     </View>

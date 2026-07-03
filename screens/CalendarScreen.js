@@ -1,10 +1,10 @@
 import { useState, useCallback } from 'react';
-import { StyleSheet, Text, View, ScrollView, Platform } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Platform } from 'react-native';
 import { Calendar } from 'react-native-calendars';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { supabase } from '../lib/supabase';
 import { useTheme } from '../context/ThemeContext';
-import { getCycleDay, getPhaseForDay, PHASES, CYCLE_LENGTH } from '../utils/cycleUtils';
+import { getCycleDay, getPhaseForDay, PHASES, CYCLE_LENGTH, PERIOD_LENGTH } from '../utils/cycleUtils';
 
 function addDays(dateStr, n) {
   const d = new Date(dateStr);
@@ -12,30 +12,45 @@ function addDays(dateStr, n) {
   return d.toISOString().split('T')[0];
 }
 
-function buildMarkedDates(startDateStr) {
+function getCurrentCycleStart(lastPeriodStartStr, cycleLength) {
+  const daysSince = Math.floor(
+    (new Date() - new Date(lastPeriodStartStr)) / (1000 * 60 * 60 * 24)
+  );
+  const cyclesPassed = Math.max(0, Math.floor(daysSince / cycleLength));
+  return addDays(lastPeriodStartStr, cyclesPassed * cycleLength);
+}
+
+function buildMarkedDates(lastPeriodStartStr, cycleLength, periodLength) {
+  const currentStart = getCurrentCycleStart(lastPeriodStartStr, cycleLength);
   const marked = {};
-  for (let i = 0; i < CYCLE_LENGTH; i++) {
-    const dateStr   = addDays(startDateStr, i);
-    const dayNum    = i + 1;
-    const phaseKey  = getPhaseForDay(dayNum);
-    if (!phaseKey) continue;
-    const prevKey = getPhaseForDay(dayNum - 1);
-    const nextKey = getPhaseForDay(dayNum + 1);
-    const phase   = PHASES[phaseKey];
-    marked[dateStr] = {
-      color:       phase.color,
-      textColor:   phase.textColor,
-      startingDay: phaseKey !== prevKey,
-      endingDay:   phaseKey !== nextKey,
-    };
+
+  for (let c = 0; c < 3; c++) {
+    const cycleStart = addDays(currentStart, c * cycleLength);
+    for (let i = 0; i < cycleLength; i++) {
+      const dateStr  = addDays(cycleStart, i);
+      const dayNum   = i + 1;
+      const phaseKey = getPhaseForDay(dayNum, periodLength);
+      if (!phaseKey) continue;
+      const prevKey = getPhaseForDay(dayNum - 1, periodLength);
+      const nextKey = getPhaseForDay(dayNum + 1, periodLength);
+      const phase   = PHASES[phaseKey];
+      marked[dateStr] = {
+        color:       phase.color,
+        textColor:   phase.textColor,
+        startingDay: phaseKey !== prevKey,
+        endingDay:   phaseKey !== nextKey,
+      };
+    }
   }
-  const nextStart = addDays(startDateStr, CYCLE_LENGTH);
-  marked[nextStart] = {
-    color: PHASES.period.color + '99',
-    textColor: '#fff',
+
+  const predictedNext = addDays(currentStart, 3 * cycleLength);
+  marked[predictedNext] = {
+    color:       PHASES.period.color + '99',
+    textColor:   '#fff',
     startingDay: true,
-    endingDay: true,
+    endingDay:   true,
   };
+
   return marked;
 }
 
@@ -52,15 +67,27 @@ const today = new Date().toISOString().split('T')[0];
 export default function CalendarScreen() {
   const { theme } = useTheme();
   const s = styles(theme);
+  const navigation = useNavigation();
 
   const [lastPeriodStart, setLastPeriodStart] = useState(null);
   const [selectedDate, setSelectedDate]       = useState(null);
+  const [cycleLength, setCycleLength]         = useState(CYCLE_LENGTH);
+  const [periodLength, setPeriodLength]       = useState(PERIOD_LENGTH);
 
   useFocusEffect(
     useCallback(() => {
       const load = async () => {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('cycle_length, period_length')
+          .eq('id', user.id)
+          .single();
+        if (profile) {
+          if (profile.cycle_length)  setCycleLength(profile.cycle_length);
+          if (profile.period_length) setPeriodLength(profile.period_length);
+        }
         const { data } = await supabase
           .from('periods')
           .select('start_date')
@@ -73,17 +100,17 @@ export default function CalendarScreen() {
     }, [])
   );
 
-  const markedDates = lastPeriodStart ? buildMarkedDates(lastPeriodStart) : {};
-  const cycleDay    = lastPeriodStart ? getCycleDay(lastPeriodStart) : null;
+  const markedDates = lastPeriodStart ? buildMarkedDates(lastPeriodStart, cycleLength, periodLength) : {};
+  const cycleDay    = lastPeriodStart ? getCycleDay(lastPeriodStart, cycleLength) : null;
 
   const getSelectedInfo = (dateStr) => {
     if (!lastPeriodStart) return null;
     const diff = Math.floor(
       (new Date(dateStr) - new Date(lastPeriodStart)) / (1000 * 60 * 60 * 24)
     );
-    if (diff < 0 || diff >= CYCLE_LENGTH) return null;
-    const day      = diff + 1;
-    const phaseKey = getPhaseForDay(day);
+    if (diff < 0) return null;
+    const day      = (diff % cycleLength) + 1;
+    const phaseKey = getPhaseForDay(day, periodLength);
     if (!phaseKey) return null;
     return { day, phaseKey, phase: PHASES[phaseKey] };
   };
@@ -101,8 +128,13 @@ export default function CalendarScreen() {
   return (
     <View style={s.screen}>
       <View style={s.header}>
-        <Text style={s.headerTitle}>My Cycle</Text>
-        <Text style={s.headerSub}>{cycleDay ? `Day ${cycleDay} of ${CYCLE_LENGTH}` : 'No period logged yet'}</Text>
+        <View style={s.headerTopRow}>
+          <Text style={s.headerTitle}>My Cycle</Text>
+          <TouchableOpacity onPress={() => navigation.navigate('Chat')} style={s.chatBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <Text style={s.chatBtnText}>⋯</Text>
+          </TouchableOpacity>
+        </View>
+        <Text style={s.headerSub}>{cycleDay ? `Day ${cycleDay} of ${cycleLength}` : 'No period logged yet'}</Text>
       </View>
 
       <ScrollView contentContainerStyle={s.content}>
@@ -170,8 +202,11 @@ const styles = (theme) => StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: theme.border,
   },
-  headerTitle: { fontSize: 20, fontWeight: '700', color: theme.text },
-  headerSub:   { fontSize: 13, color: theme.muted, marginTop: 2 },
+  headerTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  headerTitle:  { fontSize: 20, fontWeight: '700', color: theme.text },
+  chatBtn:      { padding: 4 },
+  chatBtnText:  { color: theme.muted, fontSize: 24, letterSpacing: 2, fontWeight: '400' },
+  headerSub:    { fontSize: 13, color: theme.muted, marginTop: 4 },
   content: { padding: 16, gap: 16, paddingBottom: 32 },
   calendar: {
     borderRadius: 16,

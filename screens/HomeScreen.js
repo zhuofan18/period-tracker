@@ -30,6 +30,8 @@ export default function HomeScreen({ navigation }) {
   const s = styles(theme);
 
   const [lastPeriodStart, setLastPeriodStart] = useState(null);
+  const [latestPeriodId, setLatestPeriodId]   = useState(null);
+  const [periodEnded, setPeriodEnded]         = useState(false);
   const [loading, setLoading]                 = useState(true);
   const [modalVisible, setModalVisible]       = useState(false);
   const [pickedDate, setPickedDate]           = useState(null);
@@ -51,11 +53,19 @@ export default function HomeScreen({ navigation }) {
         }
         const { data: periods } = await supabase
           .from('periods')
-          .select('start_date')
+          .select('id, start_date, end_date')
           .eq('user_id', user.id)
           .order('start_date', { ascending: false })
           .limit(1);
-        setLastPeriodStart(periods && periods.length > 0 ? periods[0].start_date : null);
+        if (periods && periods.length > 0) {
+          setLastPeriodStart(periods[0].start_date);
+          setLatestPeriodId(periods[0].id);
+          setPeriodEnded(!!periods[0].end_date);
+        } else {
+          setLastPeriodStart(null);
+          setLatestPeriodId(null);
+          setPeriodEnded(false);
+        }
         setLoading(false);
       };
       load();
@@ -76,10 +86,25 @@ export default function HomeScreen({ navigation }) {
   const confirmPeriod = async () => {
     if (!pickedDate) return;
     setLastPeriodStart(pickedDate);
+    setPeriodEnded(false);
     setModalVisible(false);
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    await supabase.from('periods').insert({ user_id: user.id, start_date: pickedDate });
+    const { data } = await supabase
+      .from('periods')
+      .insert({ user_id: user.id, start_date: pickedDate })
+      .select('id')
+      .single();
+    if (data) setLatestPeriodId(data.id);
+  };
+
+  const endPeriod = async () => {
+    if (!latestPeriodId) return;
+    setPeriodEnded(true);
+    await supabase
+      .from('periods')
+      .update({ end_date: today })
+      .eq('id', latestPeriodId);
   };
 
   const days = Array.from({ length: cycleLength }, (_, i) => i + 1);
@@ -179,6 +204,28 @@ export default function HomeScreen({ navigation }) {
           </View>
           <Text style={s.periodBtnChevron}>›</Text>
         </TouchableOpacity>
+
+        {/* End period — only shown while in period phase */}
+        {lastPeriodStart && phaseKey === 'period' && (
+          periodEnded ? (
+            <View style={s.periodEndedCard}>
+              <Text style={s.periodEndedEmoji}>✓</Text>
+              <View>
+                <Text style={s.periodEndedLabel}>Period logged as ended</Text>
+                <Text style={s.periodEndedSub}>Logged today · tap "My period started" to start a new one</Text>
+              </View>
+            </View>
+          ) : (
+            <TouchableOpacity style={s.endPeriodBtn} onPress={endPeriod} activeOpacity={0.8}>
+              <Text style={s.endPeriodEmoji}>🌿</Text>
+              <View>
+                <Text style={s.endPeriodLabel}>My period has ended</Text>
+                <Text style={s.endPeriodSub}>Tap to log your period end date</Text>
+              </View>
+              <Text style={s.endPeriodChevron}>›</Text>
+            </TouchableOpacity>
+          )
+        )}
       </ScrollView>
 
       {/* Period start modal */}
@@ -299,10 +346,30 @@ const styles = (theme) => StyleSheet.create({
     marginBottom: 8,
     ...Platform.select({ web: { boxShadow: '0 2px 8px rgba(231,84,128,0.08)' }, default: { shadowColor: '#e75480', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 6, elevation: 2 } }),
   },
-  periodBtnEmoji: { fontSize: 28 },
-  periodBtnLabel: { fontSize: 14, fontWeight: '700', color: '#e75480' },
-  periodBtnSub:   { fontSize: 12, color: theme.muted, marginTop: 2 },
+  periodBtnEmoji:   { fontSize: 28 },
+  periodBtnLabel:   { fontSize: 14, fontWeight: '700', color: '#e75480' },
+  periodBtnSub:     { fontSize: 12, color: theme.muted, marginTop: 2 },
   periodBtnChevron: { marginLeft: 'auto', fontSize: 22, color: theme.muted },
+  endPeriodBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 14,
+    backgroundColor: theme.card, borderRadius: 16, padding: 16,
+    borderWidth: 1.5, borderColor: '#34d399' + '55',
+    marginBottom: 8,
+    ...Platform.select({ web: { boxShadow: '0 2px 8px rgba(52,211,153,0.08)' }, default: { shadowColor: '#34d399', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 6, elevation: 2 } }),
+  },
+  endPeriodEmoji:   { fontSize: 28 },
+  endPeriodLabel:   { fontSize: 14, fontWeight: '700', color: '#34d399' },
+  endPeriodSub:     { fontSize: 12, color: theme.muted, marginTop: 2 },
+  endPeriodChevron: { marginLeft: 'auto', fontSize: 22, color: theme.muted },
+  periodEndedCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 14,
+    backgroundColor: '#34d399' + '15', borderRadius: 16, padding: 16,
+    borderWidth: 1.5, borderColor: '#34d399' + '44',
+    marginBottom: 8,
+  },
+  periodEndedEmoji: { fontSize: 24, color: '#34d399' },
+  periodEndedLabel: { fontSize: 14, fontWeight: '700', color: '#34d399' },
+  periodEndedSub:   { fontSize: 12, color: theme.muted, marginTop: 2 },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 },
   modalCard: { backgroundColor: theme.card, borderRadius: 20, padding: 20, width: '100%', maxWidth: 420 },
   modalTitle: { fontSize: 18, fontWeight: '700', color: theme.text, marginBottom: 4 },

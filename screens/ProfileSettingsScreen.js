@@ -260,6 +260,17 @@ export default function ProfileSettingsScreen({ navigation }) {
           ))}
         </View>
 
+        {/* Goals */}
+        <TouchableOpacity style={s.section} onPress={() => navigation.navigate('Goals', { fromProfile: true })} activeOpacity={0.8}>
+          <View style={s.goalsRow}>
+            <View>
+              <Text style={[s.sectionTitle, { marginBottom: 2 }]}>My Goals</Text>
+              <Text style={s.goalsSub}>View and update your health goals</Text>
+            </View>
+            <Text style={s.goalsChevron}>›</Text>
+          </View>
+        </TouchableOpacity>
+
         {/* Theme */}
         <View style={s.section}>
           <Text style={s.sectionTitle}>Theme</Text>
@@ -454,6 +465,9 @@ const styles = (theme) => StyleSheet.create({
   unitBtnSelected: { backgroundColor: theme.primaryLight, borderColor: theme.primary },
   unitBtnText: { fontSize: 12, color: theme.subtext, fontWeight: '500' },
   unitBtnTextSelected: { color: theme.primary, fontWeight: '700' },
+  goalsRow:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  goalsSub:    { fontSize: 12, color: theme.muted, marginTop: 2, fontWeight: '400' },
+  goalsChevron:{ fontSize: 22, color: theme.muted },
   toggleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: theme.border },
   toggleInfo: { flex: 1, marginRight: 12 },
   toggleLabel: { fontSize: 14, color: theme.text, fontWeight: '500', marginBottom: 2 },

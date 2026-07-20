@@ -179,11 +179,32 @@ export default function StatisticsScreen() {
     return (
       <FadeInView style={s.screen}>
         <Header />
-        <View style={s.emptyCenter}>
-          <Text style={s.emptyEmoji}>📊</Text>
-          <Text style={s.emptyTitle}>No data yet</Text>
-          <Text style={s.emptySub}>Log your first period start date on the Home screen to begin tracking your cycle.</Text>
-        </View>
+        <ScrollView contentContainerStyle={s.content}>
+          <View style={s.emptyCenter}>
+            <Text style={s.emptyEmoji}>📊</Text>
+            <Text style={s.emptyTitle}>No data yet</Text>
+            <Text style={s.emptySub}>Log your first period to start building your cycle insights.</Text>
+            <TouchableOpacity style={s.emptyBtn} onPress={() => navigation.navigate('Home')} activeOpacity={0.85}>
+              <Text style={s.emptyBtnText}>Go to Home to Log Period</Text>
+            </TouchableOpacity>
+          </View>
+
+          <Text style={s.previewLabel}>What you'll unlock</Text>
+          <View style={s.cardGrid}>
+            {[
+              { label: 'Avg. Cycle Length', icon: '📏' },
+              { label: 'Avg. Period Length', icon: '🗓️' },
+              { label: 'Cycle Regularity',  icon: '📈' },
+              { label: 'Cycles Tracked',    icon: '🔢' },
+            ].map(({ label, icon }) => (
+              <View key={label} style={s.lockedCard}>
+                <Text style={s.lockedIcon}>{icon}</Text>
+                <Text style={s.lockedLabel}>{label}</Text>
+                <View style={s.lockedBar} />
+              </View>
+            ))}
+          </View>
+        </ScrollView>
       </FadeInView>
     );
   }
@@ -307,10 +328,20 @@ const styles = (theme) => StyleSheet.create({
   chatBtnText:  { color: theme.muted, fontSize: 24, letterSpacing: 2, fontWeight: '400' },
   content:      { padding: 20, gap: 16, paddingBottom: 32 },
 
-  emptyCenter: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32 },
-  emptyEmoji:  { fontSize: 48, marginBottom: 16 },
-  emptyTitle:  { fontSize: 17, fontWeight: '700', color: theme.text, marginBottom: 8 },
-  emptySub:    { fontSize: 13, color: theme.muted, textAlign: 'center', lineHeight: 20 },
+  emptyCenter:  { alignItems: 'center', paddingVertical: 32 },
+  emptyEmoji:   { fontSize: 48, marginBottom: 16 },
+  emptyTitle:   { fontSize: 17, fontWeight: '700', color: theme.text, marginBottom: 8 },
+  emptySub:     { fontSize: 13, color: theme.muted, textAlign: 'center', lineHeight: 20, marginBottom: 20 },
+  emptyBtn:     { backgroundColor: '#e75480', borderRadius: 12, paddingVertical: 12, paddingHorizontal: 24 },
+  emptyBtnText: { color: '#fff', fontSize: 14, fontWeight: '600' },
+  previewLabel: { fontSize: 13, fontWeight: '700', color: theme.muted, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 12 },
+  lockedCard: {
+    width: '47%', backgroundColor: theme.card, borderRadius: 16, padding: 16, alignItems: 'center', gap: 8, opacity: 0.5,
+    ...Platform.select({ web: { boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }, default: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 6, elevation: 2 } }),
+  },
+  lockedIcon:  { fontSize: 24 },
+  lockedLabel: { fontSize: 12, color: theme.muted, textAlign: 'center', fontWeight: '500' },
+  lockedBar:   { width: '80%', height: 8, backgroundColor: theme.border, borderRadius: 4 },
 
   snapshotCard: {
     backgroundColor: theme.card, borderRadius: 16, padding: 20, borderLeftWidth: 4,

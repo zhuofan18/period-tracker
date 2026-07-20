@@ -125,13 +125,40 @@ export default function HomeScreen({ navigation }) {
       <ScrollView contentContainerStyle={s.content}>
         {/* Main card */}
         {!loading && !lastPeriodStart ? (
-          <View style={s.noPeriodCard}>
-            <Text style={s.noPeriodEmoji}>🩸</Text>
-            <Text style={s.noPeriodTitle}>No period logged yet</Text>
-            <Text style={s.noPeriodSub}>Log your last period start date to see your cycle day and predictions.</Text>
-            <TouchableOpacity style={s.noPeriodBtn} onPress={openModal}>
-              <Text style={s.noPeriodBtnText}>Log Period Start</Text>
+          <View style={s.gettingStartedCard}>
+            <Text style={s.gsWelcome}>Welcome to Luna 🌸</Text>
+            <Text style={s.gsSub}>Follow these steps to unlock your cycle insights.</Text>
+
+            <TouchableOpacity style={s.gsStep} onPress={openModal} activeOpacity={0.85}>
+              <View style={[s.gsStepNum, { backgroundColor: '#e75480' }]}>
+                <Text style={s.gsStepNumText}>1</Text>
+              </View>
+              <View style={s.gsStepBody}>
+                <Text style={s.gsStepTitle}>Log your first period</Text>
+                <Text style={s.gsStepDesc}>Tap here to record when your last period started.</Text>
+              </View>
+              <Text style={s.gsStepArrow}>›</Text>
             </TouchableOpacity>
+
+            <View style={[s.gsStep, s.gsStepLocked]}>
+              <View style={[s.gsStepNum, { backgroundColor: theme.border }]}>
+                <Text style={s.gsStepNumText}>2</Text>
+              </View>
+              <View style={s.gsStepBody}>
+                <Text style={[s.gsStepTitle, { color: theme.muted }]}>Log daily symptoms</Text>
+                <Text style={s.gsStepDesc}>Track how you feel each day for trends over time.</Text>
+              </View>
+            </View>
+
+            <View style={[s.gsStep, s.gsStepLocked, { borderBottomWidth: 0 }]}>
+              <View style={[s.gsStepNum, { backgroundColor: theme.border }]}>
+                <Text style={s.gsStepNumText}>3</Text>
+              </View>
+              <View style={s.gsStepBody}>
+                <Text style={[s.gsStepTitle, { color: theme.muted }]}>Unlock cycle statistics</Text>
+                <Text style={s.gsStepDesc}>After 2 periods, see your avg. length and regularity.</Text>
+              </View>
+            </View>
           </View>
         ) : (
           <View style={s.mainCard}>
@@ -326,15 +353,23 @@ const styles = (theme) => StyleSheet.create({
   },
   phaseInfoTitle: { fontSize: 14, fontWeight: '700', marginBottom: 6 },
   phaseInfoText: { fontSize: 13, color: theme.subtext, lineHeight: 20 },
-  noPeriodCard: {
-    backgroundColor: theme.card, borderRadius: 20, padding: 24, alignItems: 'center',
+  gettingStartedCard: {
+    backgroundColor: theme.card, borderRadius: 20, padding: 20,
     ...Platform.select({ web: { boxShadow: '0 2px 10px rgba(0,0,0,0.08)' }, default: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 3 } }),
   },
-  noPeriodEmoji: { fontSize: 48, marginBottom: 12 },
-  noPeriodTitle: { fontSize: 17, fontWeight: '700', color: theme.text, marginBottom: 8 },
-  noPeriodSub:   { fontSize: 13, color: theme.muted, textAlign: 'center', lineHeight: 20, marginBottom: 20 },
-  noPeriodBtn:   { backgroundColor: '#e75480', borderRadius: 12, paddingVertical: 12, paddingHorizontal: 28 },
-  noPeriodBtnText: { color: '#fff', fontSize: 14, fontWeight: '600' },
+  gsWelcome:      { fontSize: 18, fontWeight: '800', color: theme.text, marginBottom: 4 },
+  gsSub:          { fontSize: 13, color: theme.muted, marginBottom: 20 },
+  gsStep: {
+    flexDirection: 'row', alignItems: 'center', gap: 14,
+    paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: theme.border,
+  },
+  gsStepLocked:   { opacity: 0.45 },
+  gsStepNum:      { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  gsStepNumText:  { color: '#fff', fontWeight: '700', fontSize: 14 },
+  gsStepBody:     { flex: 1 },
+  gsStepTitle:    { fontSize: 14, fontWeight: '700', color: theme.text, marginBottom: 2 },
+  gsStepDesc:     { fontSize: 12, color: theme.muted, lineHeight: 18 },
+  gsStepArrow:    { fontSize: 22, color: '#e75480' },
   actionsRow: { flexDirection: 'row', gap: 12 },
   actionBtn: { flex: 1, paddingVertical: 14, borderRadius: 14, alignItems: 'center' },
   actionBtnText: { color: '#fff', fontSize: 14, fontWeight: '600' },

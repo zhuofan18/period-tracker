@@ -237,6 +237,16 @@ export default function DailyLogScreen() {
       </View>
 
       <ScrollView contentContainerStyle={s.content}>
+        {!lastPeriodStart && (
+          <TouchableOpacity style={s.noPeriodBanner} onPress={() => navigation.navigate('Home')} activeOpacity={0.85}>
+            <Text style={s.noPeriodBannerIcon}>💡</Text>
+            <View style={s.noPeriodBannerBody}>
+              <Text style={s.noPeriodBannerTitle}>Set up your cycle first</Text>
+              <Text style={s.noPeriodBannerSub}>Log your period start on Home for accurate phase tracking.</Text>
+            </View>
+            <Text style={s.noPeriodBannerArrow}>›</Text>
+          </TouchableOpacity>
+        )}
         <Text style={s.intro}>{questions.intro}</Text>
 
         {questions.sections.map((section) => (
@@ -318,6 +328,16 @@ const styles = (theme) => StyleSheet.create({
   phaseBadgeText: { color: '#fff', fontSize: 12, fontWeight: '600' },
 
   content:    { padding: 16, gap: 16, paddingBottom: 32 },
+  noPeriodBanner: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: theme.card, borderRadius: 14, padding: 14,
+    borderWidth: 1, borderColor: '#e75480' + '44', marginBottom: 4,
+  },
+  noPeriodBannerIcon:  { fontSize: 22 },
+  noPeriodBannerBody:  { flex: 1 },
+  noPeriodBannerTitle: { fontSize: 14, fontWeight: '700', color: theme.text, marginBottom: 2 },
+  noPeriodBannerSub:   { fontSize: 12, color: theme.muted },
+  noPeriodBannerArrow: { fontSize: 20, color: '#e75480' },
   intro:      { fontSize: 15, color: theme.subtext, lineHeight: 22 },
   card: {
     backgroundColor: theme.card, borderRadius: 16, padding: 16,

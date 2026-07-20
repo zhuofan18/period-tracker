@@ -158,8 +158,20 @@ export default function CalendarScreen() {
           style={[s.calendar, { backgroundColor: theme.card }]}
         />
 
+        {/* No period logged — prompt to get started */}
+        {!lastPeriodStart && (
+          <View style={s.emptyCard}>
+            <Text style={s.emptyEmoji}>📅</Text>
+            <Text style={s.emptyTitle}>Your cycle map is empty</Text>
+            <Text style={s.emptySub}>Log your first period start date to see your cycle phases mapped on the calendar.</Text>
+            <TouchableOpacity style={s.emptyBtn} onPress={() => navigation.navigate('Home')} activeOpacity={0.85}>
+              <Text style={s.emptyBtnText}>Go to Home to Log Period</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         {/* Selected day info */}
-        {selectedInfo ? (
+        {lastPeriodStart && (selectedInfo ? (
           <View style={[s.dayCard, { borderLeftColor: selectedInfo.phase.color }]}>
             <Text style={[s.dayCardTitle, { color: selectedInfo.phase.color }]}>
               Day {selectedInfo.day} — {selectedInfo.phase.label}
@@ -171,7 +183,7 @@ export default function CalendarScreen() {
           <View style={s.tapHint}>
             <Text style={s.tapHintText}>Tap any date to see phase details</Text>
           </View>
-        )}
+        ))}
 
         {/* Legend */}
         <View style={s.legend}>
@@ -230,6 +242,15 @@ const styles = (theme) => StyleSheet.create({
   dayCardDesc:  { fontSize: 13, color: theme.subtext, lineHeight: 20 },
   tapHint: { alignItems: 'center', paddingVertical: 12 },
   tapHintText: { fontSize: 13, color: theme.muted },
+  emptyCard: {
+    backgroundColor: theme.card, borderRadius: 16, padding: 20, alignItems: 'center',
+    ...Platform.select({ web: { boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }, default: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 6, elevation: 2 } }),
+  },
+  emptyEmoji: { fontSize: 40, marginBottom: 10 },
+  emptyTitle: { fontSize: 16, fontWeight: '700', color: theme.text, marginBottom: 6 },
+  emptySub:   { fontSize: 13, color: theme.muted, textAlign: 'center', lineHeight: 20, marginBottom: 16 },
+  emptyBtn:   { backgroundColor: '#e75480', borderRadius: 12, paddingVertical: 12, paddingHorizontal: 24 },
+  emptyBtnText: { color: '#fff', fontSize: 14, fontWeight: '600' },
   legend: {
     backgroundColor: theme.card,
     borderRadius: 14,

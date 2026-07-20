@@ -90,18 +90,35 @@ function AppNavigator() {
   return (
     <NavigationContainer>
       <StatusBar style={theme.dark ? 'light' : 'dark'} />
-      <Stack.Navigator initialRouteName={initialRoute} screenOptions={{ headerShown: false, contentStyle: { backgroundColor: theme.background } }}>
-        <Stack.Screen name="Login"           component={LoginScreen} />
-        <Stack.Screen name="CreateAccount"   component={CreateAccountScreen} />
-        <Stack.Screen name="LoginForm"       component={LoginFormScreen} />
-        <Stack.Screen name="ForgotPassword"  component={ForgotPasswordScreen} />
-        <Stack.Screen name="ResetPassword"   component={ResetPasswordScreen} />
-        <Stack.Screen name="Goals"           component={GoalsScreen} />
-        <Stack.Screen name="GeneralInfo"     component={GeneralInfoScreen} />
-        <Stack.Screen name="CycleSetup"      component={CycleCalendarScreen} />
-        <Stack.Screen name="MainApp"         component={MainTabs} />
-        <Stack.Screen name="Chat"            component={ChatScreen} />
-        <Stack.Screen name="LogHistory"      component={LogHistoryScreen} />
+      <Stack.Navigator
+        initialRouteName={initialRoute}
+        screenOptions={{
+          headerShown: false,
+          contentStyle: { backgroundColor: theme.background },
+          animation: 'slide_from_right',
+          animationDuration: 220,
+        }}
+      >
+        {/* Auth flow */}
+        <Stack.Screen name="Login"          component={LoginScreen}          options={{ animation: 'fade' }} />
+        <Stack.Screen name="CreateAccount"  component={CreateAccountScreen} />
+        <Stack.Screen name="LoginForm"      component={LoginFormScreen} />
+        <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+        <Stack.Screen name="ResetPassword"  component={ResetPasswordScreen} />
+
+        {/* Onboarding flow */}
+        <Stack.Screen name="Goals"      component={GoalsScreen} />
+        <Stack.Screen name="GeneralInfo" component={GeneralInfoScreen} />
+        <Stack.Screen name="CycleSetup"  component={CycleCalendarScreen} />
+
+        {/* Main app — fade in from auth/onboarding */}
+        <Stack.Screen name="MainApp" component={MainTabs} options={{ animation: 'fade', animationDuration: 300 }} />
+
+        {/* Modal-style screens slide up from bottom */}
+        <Stack.Screen name="Chat"       component={ChatScreen}       options={{ animation: 'slide_from_bottom', animationDuration: 280 }} />
+        <Stack.Screen name="LogHistory" component={LogHistoryScreen} options={{ animation: 'slide_from_bottom', animationDuration: 280 }} />
+
+        {/* Kept for backwards compat */}
         <Stack.Screen name="Statistics"      component={StatisticsScreen} />
         <Stack.Screen name="ProfileSettings" component={ProfileSettingsScreen} />
       </Stack.Navigator>

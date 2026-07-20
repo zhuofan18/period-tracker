@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, TextInput, Switch, Modal, Linking, Platform, Alert } from 'react-native';
+import FadeInView from '../components/FadeInView';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
 import { useTheme } from '../context/ThemeContext';
@@ -113,7 +114,7 @@ export default function ProfileSettingsScreen({ navigation }) {
   };
 
   return (
-    <View style={s.screen}>
+    <FadeInView style={s.screen}>
       <View style={s.header}>
         <View style={s.headerTopRow}>
           <Text style={s.headerTitle}>Profile & Settings</Text>
@@ -491,7 +492,7 @@ export default function ProfileSettingsScreen({ navigation }) {
           <Text style={s.logoutText}>Log Out</Text>
         </TouchableOpacity>
       </ScrollView>
-    </View>
+    </FadeInView>
   );
 }
 

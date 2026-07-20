@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Platform } from 'react-native';
+import FadeInView from '../components/FadeInView';
 import { Calendar } from 'react-native-calendars';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { supabase } from '../lib/supabase';
@@ -126,7 +127,7 @@ export default function CalendarScreen() {
     : null;
 
   return (
-    <View style={s.screen}>
+    <FadeInView style={s.screen}>
       <View style={s.header}>
         <View style={s.headerTopRow}>
           <Text style={s.headerTitle}>My Cycle</Text>
@@ -188,7 +189,7 @@ export default function CalendarScreen() {
           </View>
         </View>
       </ScrollView>
-    </View>
+    </FadeInView>
   );
 }
 

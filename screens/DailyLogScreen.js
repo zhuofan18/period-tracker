@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, TextInput, Platform } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import FadeInView from '../components/FadeInView';
 import { supabase } from '../lib/supabase';
 import { useTheme } from '../context/ThemeContext';
 import { getPhaseForDay, PHASES, CYCLE_LENGTH, PERIOD_LENGTH } from '../utils/cycleUtils';
@@ -187,7 +188,7 @@ export default function DailyLogScreen() {
   const saveBtnLabel = saved ? 'Saved ✓' : saving ? 'Saving...' : isToday ? "Save Today's Log" : 'Update Log';
 
   return (
-    <View style={s.screen}>
+    <FadeInView style={s.screen}>
       <View style={[s.header, { backgroundColor: phase.color }]}>
         {/* Top row: title + history + chat button */}
         <View style={s.headerTopRow}>
@@ -289,7 +290,7 @@ export default function DailyLogScreen() {
           <Text style={s.saveBtnText}>{saveBtnLabel}</Text>
         </TouchableOpacity>
       </ScrollView>
-    </View>
+    </FadeInView>
   );
 }
 

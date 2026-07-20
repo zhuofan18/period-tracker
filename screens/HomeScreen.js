@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Modal, Platform } from 'react-native';
+import FadeInView from '../components/FadeInView';
 import { Calendar } from 'react-native-calendars';
 import { useFocusEffect } from '@react-navigation/native';
 import { supabase } from '../lib/supabase';
@@ -110,7 +111,7 @@ export default function HomeScreen({ navigation }) {
   const days = Array.from({ length: cycleLength }, (_, i) => i + 1);
 
   return (
-    <View style={s.screen}>
+    <FadeInView style={s.screen}>
       <View style={[s.header, { backgroundColor: phase.color }]}>
         <View style={s.headerTopRow}>
           <Text style={s.greeting}>{getGreeting()}{displayName ? `, ${displayName}` : ''} 👋</Text>
@@ -228,7 +229,7 @@ export default function HomeScreen({ navigation }) {
         )}
       </ScrollView>
 
-      {/* Period start modal */}
+    {/* Period start modal */}
       <Modal visible={modalVisible} transparent animationType="fade" onRequestClose={() => setModalVisible(false)}>
         <View style={s.modalOverlay}>
           <View style={s.modalCard}>
@@ -278,7 +279,7 @@ export default function HomeScreen({ navigation }) {
           </View>
         </View>
       </Modal>
-    </View>
+    </FadeInView>
   );
 }
 

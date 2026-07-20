@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Platform, ActivityIndicator } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import FadeInView from '../components/FadeInView';
 import { supabase } from '../lib/supabase';
 import { useTheme } from '../context/ThemeContext';
 import { getCycleDay, getPhaseForDay, getDaysUntilNextPeriod, getNextPeriodDate, PHASES, CYCLE_LENGTH, PERIOD_LENGTH } from '../utils/cycleUtils';
@@ -176,14 +177,14 @@ export default function StatisticsScreen() {
   // No periods logged at all
   if (periods.length === 0) {
     return (
-      <View style={s.screen}>
+      <FadeInView style={s.screen}>
         <Header />
         <View style={s.emptyCenter}>
           <Text style={s.emptyEmoji}>📊</Text>
           <Text style={s.emptyTitle}>No data yet</Text>
           <Text style={s.emptySub}>Log your first period start date on the Home screen to begin tracking your cycle.</Text>
         </View>
-      </View>
+      </FadeInView>
     );
   }
 
@@ -197,7 +198,7 @@ export default function StatisticsScreen() {
   // 1 period — show current cycle snapshot, prompt for more
   if (!stats) {
     return (
-      <View style={s.screen}>
+      <FadeInView style={s.screen}>
         <Header />
         <ScrollView contentContainerStyle={s.content}>
           <View style={[s.snapshotCard, { borderLeftColor: phase.color }]}>
@@ -226,7 +227,7 @@ export default function StatisticsScreen() {
             <Text style={s.progressHint}>1 of 2 periods logged</Text>
           </View>
         </ScrollView>
-      </View>
+      </FadeInView>
     );
   }
 
@@ -234,7 +235,7 @@ export default function StatisticsScreen() {
   const maxDays = Math.max(...stats.recentCycles);
 
   return (
-    <View style={s.screen}>
+    <FadeInView style={s.screen}>
       <Header />
       <ScrollView contentContainerStyle={s.content}>
         <View style={s.cardGrid}>
@@ -293,7 +294,7 @@ export default function StatisticsScreen() {
           </Text>
         </View>
       </ScrollView>
-    </View>
+    </FadeInView>
   );
 }
 

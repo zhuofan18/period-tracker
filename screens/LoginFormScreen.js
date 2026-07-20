@@ -1,7 +1,37 @@
-import { useState } from 'react';
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
+import { useState, useEffect } from 'react';
+import {
+  StyleSheet, Text, View, TextInput, TouchableOpacity,
+  ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator,
+} from 'react-native';
 import { supabase } from '../lib/supabase';
 import { useTheme } from '../context/ThemeContext';
+
+// ─── Web Credential Management helpers ───────────────────────────────────────
+const credApiAvailable =
+  Platform.OS === 'web' &&
+  typeof window !== 'undefined' &&
+  typeof window.PasswordCredential !== 'undefined' &&
+  typeof navigator !== 'undefined' &&
+  typeof navigator.credentials !== 'undefined';
+
+async function getSavedCredential() {
+  if (!credApiAvailable) return null;
+  try {
+    const cred = await navigator.credentials.get({ password: true, mediation: 'silent' });
+    return cred || null;
+  } catch {
+    return null;
+  }
+}
+
+async function storeCredential(id, password) {
+  if (!credApiAvailable) return;
+  try {
+    const cred = new window.PasswordCredential({ id, password });
+    await navigator.credentials.store(cred);
+  } catch {}
+}
+// ─────────────────────────────────────────────────────────────────────────────
 
 export default function LoginFormScreen({ navigation }) {
   const { theme } = useTheme();
@@ -14,43 +44,103 @@ export default function LoginFormScreen({ navigation }) {
   const [serverError, setServerError]   = useState('');
   const [loading, setLoading]           = useState(false);
 
+  // Saved credential found by the browser
+  const [savedCred, setSavedCred]       = useState(null);
+  const [credLoading, setCredLoading]   = useState(false);
+
+  useEffect(() => {
+    getSavedCredential().then(cred => {
+      if (cred) setSavedCred(cred);
+    });
+  }, []);
+
   const fieldErrors = {
     username: submitted && !username.trim() ? 'Username is required' : '',
     password: submitted && !password        ? 'Password is required'
             : submitted && password.length < 6 ? 'Password must be at least 6 characters' : '',
   };
 
+  // Core sign-in: accepts explicit values so both paths can call it
+  const signIn = async (usernameVal, passwordVal, saveAfter = false) => {
+    const { data: email, error: lookupError } = await supabase
+      .rpc('get_email_by_username', { p_username: usernameVal.trim() });
+
+    if (lookupError || !email) {
+      setServerError('No account found with that username.');
+      return false;
+    }
+
+    const { error } = await supabase.auth.signInWithPassword({ email, password: passwordVal });
+    if (error) {
+      setServerError('Incorrect password.');
+      return false;
+    }
+
+    if (saveAfter) await storeCredential(usernameVal.trim(), passwordVal);
+    return true;
+  };
+
+  // Manual form submit
   const handleLogin = async () => {
     setSubmitted(true);
     setServerError('');
     if (!username.trim() || password.length < 6) return;
     setLoading(true);
-
-    // Look up the email for this username
-    const { data: email, error: lookupError } = await supabase
-      .rpc('get_email_by_username', { p_username: username.trim() });
-
-    if (lookupError || !email) {
-      setLoading(false);
-      setServerError('No account found with that username.');
-      return;
-    }
-
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const ok = await signIn(username, password, true);
     setLoading(false);
-    if (error) { setServerError('Incorrect password.'); return; }
-    navigation.navigate('MainApp');
+    if (ok) navigation.navigate('MainApp');
+  };
+
+  // One-tap continue with saved credential
+  const handleSavedLogin = async () => {
+    setCredLoading(true);
+    setServerError('');
+    const ok = await signIn(savedCred.id, savedCred.password);
+    setCredLoading(false);
+    if (ok) navigation.navigate('MainApp');
   };
 
   return (
     <KeyboardAvoidingView style={s.screen} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-      <ScrollView contentContainerStyle={s.container}>
+      <ScrollView contentContainerStyle={s.container} keyboardShouldPersistTaps="handled">
         <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}>
           <Text style={s.backArrow}>←</Text>
         </TouchableOpacity>
         <Text style={s.header}>Welcome back</Text>
         <Text style={s.sub}>Log in with your username and password</Text>
 
+        {/* ── One-tap saved credential card (web only) ── */}
+        {savedCred && (
+          <TouchableOpacity
+            style={s.savedCard}
+            onPress={handleSavedLogin}
+            activeOpacity={0.8}
+            disabled={credLoading}
+          >
+            <View style={s.savedAvatar}>
+              <Text style={s.savedAvatarText}>
+                {savedCred.id.charAt(0).toUpperCase()}
+              </Text>
+            </View>
+            <View style={s.savedInfo}>
+              <Text style={s.savedName}>{savedCred.id}</Text>
+              <Text style={s.savedHint}>Tap to continue</Text>
+            </View>
+            {credLoading
+              ? <ActivityIndicator color={theme.primary} />
+              : <Text style={s.savedArrow}>→</Text>}
+          </TouchableOpacity>
+        )}
+
+        {savedCred && (
+          <View style={s.dividerRow}>
+            <View style={s.dividerLine} />
+            <Text style={s.dividerText}>or sign in with a different account</Text>
+            <View style={s.dividerLine} />
+          </View>
+        )}
+
+        {/* ── Manual form ── */}
         <Text style={s.label}>Username</Text>
         <TextInput
           style={[s.input, fieldErrors.username && s.inputError]}
@@ -58,6 +148,9 @@ export default function LoginFormScreen({ navigation }) {
           placeholderTextColor={theme.placeholder}
           autoCapitalize="none"
           autoCorrect={false}
+          autoComplete="username"
+          // web-only name attribute for browser autofill
+          {...(Platform.OS === 'web' ? { name: 'username' } : {})}
           value={username}
           onChangeText={(v) => { setUsername(v); setServerError(''); }}
         />
@@ -70,6 +163,8 @@ export default function LoginFormScreen({ navigation }) {
             placeholder="Enter your password"
             placeholderTextColor={theme.placeholder}
             secureTextEntry={!showPassword}
+            autoComplete="current-password"
+            {...(Platform.OS === 'web' ? { name: 'password' } : {})}
             value={password}
             onChangeText={(v) => { setPassword(v); setServerError(''); }}
           />
@@ -113,7 +208,33 @@ const styles = (theme) => StyleSheet.create({
   backBtn:         { marginBottom: 24 },
   backArrow:       { fontSize: 22, color: theme.text },
   header:          { fontSize: 28, fontWeight: 'bold', color: theme.text, marginBottom: 6 },
-  sub:             { fontSize: 14, color: theme.muted, marginBottom: 32 },
+  sub:             { fontSize: 14, color: theme.muted, marginBottom: 24 },
+
+  // Saved credential card
+  savedCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: theme.card,
+    borderRadius: 14, padding: 14, marginBottom: 8,
+    borderWidth: 1.5, borderColor: theme.primary,
+    ...Platform.select({
+      web: { boxShadow: '0 2px 12px rgba(231,84,128,0.12)' },
+      default: { shadowColor: '#e75480', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.12, shadowRadius: 8, elevation: 3 },
+    }),
+  },
+  savedAvatar: {
+    width: 44, height: 44, borderRadius: 22,
+    backgroundColor: theme.primary, alignItems: 'center', justifyContent: 'center',
+  },
+  savedAvatarText: { color: '#fff', fontSize: 18, fontWeight: '700' },
+  savedInfo:       { flex: 1 },
+  savedName:       { fontSize: 15, fontWeight: '700', color: theme.text },
+  savedHint:       { fontSize: 12, color: theme.muted, marginTop: 2 },
+  savedArrow:      { fontSize: 18, color: theme.primary },
+
+  dividerRow:   { flexDirection: 'row', alignItems: 'center', gap: 8, marginVertical: 20 },
+  dividerLine:  { flex: 1, height: 1, backgroundColor: theme.border },
+  dividerText:  { fontSize: 11, color: theme.muted, textAlign: 'center', flexShrink: 1 },
+
   label:           { fontSize: 13, fontWeight: '600', color: theme.subtext, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 },
   input:           { borderWidth: 1, borderColor: theme.inputBorder, borderRadius: 10, paddingHorizontal: 16, paddingVertical: 13, fontSize: 15, color: theme.text, backgroundColor: theme.inputBg, marginBottom: 4 },
   inputError:      { borderColor: '#e74c3c' },

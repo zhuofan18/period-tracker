@@ -7,7 +7,7 @@ export default function LoginFormScreen({ navigation }) {
   const { theme } = useTheme();
   const s = styles(theme);
 
-  const [email, setEmail]               = useState('');
+  const [username, setUsername]         = useState('');
   const [password, setPassword]         = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [submitted, setSubmitted]       = useState(false);
@@ -15,23 +15,30 @@ export default function LoginFormScreen({ navigation }) {
   const [loading, setLoading]           = useState(false);
 
   const fieldErrors = {
-    email:    submitted && !email.trim()        ? 'Email is required'
-            : submitted && !email.includes('@') ? 'Enter a valid email address' : '',
-    password: submitted && !password            ? 'Password is required'
-            : submitted && password.length < 6  ? 'Password must be at least 6 characters' : '',
+    username: submitted && !username.trim() ? 'Username is required' : '',
+    password: submitted && !password        ? 'Password is required'
+            : submitted && password.length < 6 ? 'Password must be at least 6 characters' : '',
   };
 
   const handleLogin = async () => {
     setSubmitted(true);
     setServerError('');
-    if (!email.trim() || !email.includes('@') || password.length < 6) return;
+    if (!username.trim() || password.length < 6) return;
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({
-      email: email.trim(),
-      password,
-    });
+
+    // Look up the email for this username
+    const { data: email, error: lookupError } = await supabase
+      .rpc('get_email_by_username', { p_username: username.trim() });
+
+    if (lookupError || !email) {
+      setLoading(false);
+      setServerError('No account found with that username.');
+      return;
+    }
+
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
-    if (error) { setServerError(error.message); return; }
+    if (error) { setServerError('Incorrect password.'); return; }
     navigation.navigate('MainApp');
   };
 
@@ -42,19 +49,19 @@ export default function LoginFormScreen({ navigation }) {
           <Text style={s.backArrow}>←</Text>
         </TouchableOpacity>
         <Text style={s.header}>Welcome back</Text>
-        <Text style={s.sub}>Log in to your account</Text>
+        <Text style={s.sub}>Log in with your username and password</Text>
 
-        <Text style={s.label}>Email Address</Text>
+        <Text style={s.label}>Username</Text>
         <TextInput
-          style={[s.input, fieldErrors.email && s.inputError]}
-          placeholder="Enter your email"
+          style={[s.input, fieldErrors.username && s.inputError]}
+          placeholder="Enter your username"
           placeholderTextColor={theme.placeholder}
-          keyboardType="email-address"
           autoCapitalize="none"
-          value={email}
-          onChangeText={(v) => { setEmail(v); setServerError(''); }}
+          autoCorrect={false}
+          value={username}
+          onChangeText={(v) => { setUsername(v); setServerError(''); }}
         />
-        {fieldErrors.email ? <Text style={s.fieldError}>{fieldErrors.email}</Text> : null}
+        {fieldErrors.username ? <Text style={s.fieldError}>{fieldErrors.username}</Text> : null}
 
         <Text style={s.label}>Password</Text>
         <View style={[s.passwordWrapper, fieldErrors.password && s.inputError]}>
@@ -84,7 +91,9 @@ export default function LoginFormScreen({ navigation }) {
           disabled={loading}
           activeOpacity={0.8}
         >
-          {loading ? <ActivityIndicator color="#fff" /> : <Text style={s.loginBtnText}>Log In</Text>}
+          {loading
+            ? <ActivityIndicator color="#fff" />
+            : <Text style={s.loginBtnText}>Log In</Text>}
         </TouchableOpacity>
 
         <View style={s.signupRow}>

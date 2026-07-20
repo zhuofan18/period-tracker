@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, TextInput, Platform } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { supabase } from '../lib/supabase';
 import { useTheme } from '../context/ThemeContext';
 import { getPhaseForDay, PHASES, CYCLE_LENGTH, PERIOD_LENGTH } from '../utils/cycleUtils';
@@ -59,8 +59,9 @@ export default function DailyLogScreen() {
   const { theme } = useTheme();
   const s = styles(theme);
   const navigation = useNavigation();
+  const route = useRoute();
 
-  const [selectedDate, setSelectedDate]   = useState(todayStr);
+  const [selectedDate, setSelectedDate]   = useState(route.params?.date || todayStr);
   const [userId, setUserId]               = useState(null);
   const [lastPeriodStart, setLastPeriodStart] = useState(null);
   const [cycleLength, setCycleLength]     = useState(CYCLE_LENGTH);
@@ -70,6 +71,11 @@ export default function DailyLogScreen() {
   const [notes, setNotes]     = useState('');
   const [saving, setSaving]   = useState(false);
   const [saved, setSaved]     = useState(false);
+
+  // Update selected date when navigated from LogHistory
+  useEffect(() => {
+    if (route.params?.date) setSelectedDate(route.params.date);
+  }, [route.params?.date]);
 
   // One-time init: get user, profile, last period
   useEffect(() => {
@@ -183,16 +189,25 @@ export default function DailyLogScreen() {
   return (
     <View style={s.screen}>
       <View style={[s.header, { backgroundColor: phase.color }]}>
-        {/* Top row: title + chat button */}
+        {/* Top row: title + history + chat button */}
         <View style={s.headerTopRow}>
           <Text style={s.headerTitle}>Daily Log</Text>
-          <TouchableOpacity
-            onPress={() => navigation.navigate('Chat')}
-            style={s.chatBtn}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <Text style={s.chatBtnText}>⋯</Text>
-          </TouchableOpacity>
+          <View style={s.headerActions}>
+            <TouchableOpacity
+              onPress={() => navigation.navigate('LogHistory')}
+              style={s.historyBtn}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Text style={s.historyBtnText}>📋</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => navigation.navigate('Chat')}
+              style={s.chatBtn}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Text style={s.chatBtnText}>⋯</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Date navigation */}
@@ -281,10 +296,13 @@ export default function DailyLogScreen() {
 const styles = (theme) => StyleSheet.create({
   screen:      { flex: 1, backgroundColor: theme.surface },
   header:      { paddingHorizontal: 20, paddingTop: Platform.OS === 'android' ? 44 : 54, paddingBottom: 16 },
-  headerTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
-  headerTitle: { fontSize: 22, fontWeight: '800', color: '#fff' },
-  chatBtn:     { padding: 4 },
-  chatBtnText: { color: 'rgba(255,255,255,0.9)', fontSize: 26, letterSpacing: 2, fontWeight: '300' },
+  headerTopRow:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
+  headerTitle:   { fontSize: 22, fontWeight: '800', color: '#fff' },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  historyBtn:    { padding: 4 },
+  historyBtnText:{ fontSize: 20 },
+  chatBtn:       { padding: 4 },
+  chatBtnText:   { color: 'rgba(255,255,255,0.9)', fontSize: 26, letterSpacing: 2, fontWeight: '300' },
 
   dateNav:         { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
   dateArrow:       { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },

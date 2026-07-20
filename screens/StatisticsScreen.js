@@ -39,6 +39,45 @@ function calcStats(periods) {
   return { avg, min, max, regularity, regularityPct, cyclesTracked: cycleLengths.length, recentCycles: cycleLengths.slice(-6), avgPeriodLength };
 }
 
+function calcSymptomTrends(logs, periods, periodLength, cycleLength) {
+  if (!logs.length || !periods.length) return [];
+
+  // For each log, determine which period cycle it belongs to
+  const sorted = [...periods].sort((a, b) => new Date(a.start_date) - new Date(b.start_date));
+
+  // Collect all symptoms/answers across period-phase logs only
+  const periodLogs = logs.filter((log) => {
+    const closest = sorted.reduce((prev, p) => {
+      const diff = (new Date(log.log_date) - new Date(p.start_date)) / (1000 * 60 * 60 * 24);
+      return diff >= 0 && diff < cycleLength ? p : prev;
+    }, null);
+    if (!closest) return false;
+    const day = Math.floor((new Date(log.log_date) - new Date(closest.start_date)) / (1000 * 60 * 60 * 24)) + 1;
+    return day >= 1 && day <= periodLength;
+  });
+
+  if (periodLogs.length < 2) return [];
+
+  // Count frequency of each symptom/answer
+  const counts = {};
+  for (const log of periodLogs) {
+    const seen = new Set();
+    for (const val of Object.values(log.phase_answers || {})) {
+      const items = Array.isArray(val) ? val : [val];
+      for (const item of items) {
+        if (item && !seen.has(item)) { seen.add(item); counts[item] = (counts[item] || 0) + 1; }
+      }
+    }
+  }
+
+  const total = periodLogs.length;
+  return Object.entries(counts)
+    .filter(([, c]) => c >= 2 && c / total >= 0.4)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 5)
+    .map(([symptom, count]) => ({ symptom, count, total, pct: Math.round((count / total) * 100) }));
+}
+
 function StatCard({ label, value, unit, sub, color, theme }) {
   const s = cardStyles(theme);
   return (
@@ -82,10 +121,11 @@ export default function StatisticsScreen() {
   const s = styles(theme);
   const navigation = useNavigation();
 
-  const [periods, setPeriods]     = useState([]);
-  const [stats, setStats]         = useState(null);
-  const [profile, setProfile]     = useState(null);
-  const [loading, setLoading]     = useState(true);
+  const [periods, setPeriods]         = useState([]);
+  const [stats, setStats]             = useState(null);
+  const [profile, setProfile]         = useState(null);
+  const [symptomTrends, setSymptomTrends] = useState([]);
+  const [loading, setLoading]         = useState(true);
 
   useFocusEffect(
     useCallback(() => {
@@ -94,15 +134,17 @@ export default function StatisticsScreen() {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) { setLoading(false); return; }
 
-        const [{ data: prof }, { data: pds }] = await Promise.all([
+        const [{ data: prof }, { data: pds }, { data: logs }] = await Promise.all([
           supabase.from('profiles').select('cycle_length, period_length').eq('id', user.id).single(),
           supabase.from('periods').select('start_date, end_date').eq('user_id', user.id).order('start_date', { ascending: false }),
+          supabase.from('daily_logs').select('log_date, phase_answers').eq('user_id', user.id),
         ]);
 
         setProfile(prof);
         const periodList = pds || [];
         setPeriods(periodList);
         setStats(periodList.length >= 2 ? calcStats(periodList) : null);
+        setSymptomTrends(calcSymptomTrends(logs || [], periodList, prof?.period_length || PERIOD_LENGTH, prof?.cycle_length || CYCLE_LENGTH));
         setLoading(false);
       };
       load();
@@ -226,6 +268,22 @@ export default function StatisticsScreen() {
           </View>
         )}
 
+        {symptomTrends.length > 0 && (
+          <View style={s.section}>
+            <Text style={s.sectionTitle}>Period Symptom Trends</Text>
+            <Text style={s.sectionSub}>Based on your period-phase logs</Text>
+            {symptomTrends.map(({ symptom, count, total, pct }) => (
+              <View key={symptom} style={s.trendRow}>
+                <Text style={s.trendLabel}>{symptom}</Text>
+                <View style={s.trendBarBg}>
+                  <View style={[s.trendBarFill, { width: `${pct}%` }]} />
+                </View>
+                <Text style={s.trendPct}>{count}/{total}</Text>
+              </View>
+            ))}
+          </View>
+        )}
+
         <View style={s.insightBanner}>
           <Text style={s.insightIcon}>💡</Text>
           <Text style={s.insightText}>
@@ -289,6 +347,11 @@ const styles = (theme) => StyleSheet.create({
   regularityLabelSide: { fontSize: 11, color: theme.muted },
   regularityValue:     { fontSize: 13, fontWeight: '700', color: '#34d399' },
   barChart:            { flexDirection: 'row', justifyContent: 'space-around', alignItems: 'flex-end', height: 110, marginTop: 8 },
+  trendRow:     { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 10 },
+  trendLabel:   { width: 120, fontSize: 12, color: theme.text },
+  trendBarBg:   { flex: 1, height: 8, backgroundColor: theme.optionBg, borderRadius: 4, overflow: 'hidden' },
+  trendBarFill: { height: '100%', backgroundColor: '#e75480', borderRadius: 4 },
+  trendPct:     { fontSize: 11, color: theme.muted, width: 32, textAlign: 'right' },
   insightBanner:       { flexDirection: 'row', backgroundColor: theme.primaryLight, borderRadius: 14, padding: 16, gap: 12, alignItems: 'flex-start', borderWidth: 1, borderColor: theme.primary + '33' },
   insightIcon:         { fontSize: 20 },
   insightText:         { flex: 1, fontSize: 13, color: theme.text, lineHeight: 20 },

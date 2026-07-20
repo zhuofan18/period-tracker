@@ -3,6 +3,13 @@ import { StyleSheet, Text, View, ScrollView, TouchableOpacity, TextInput, Switch
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
 import { useTheme } from '../context/ThemeContext';
+import {
+  requestPermissions, getPermissionStatus,
+  schedulePeriodReminder, cancelPeriodReminder,
+  scheduleOvulationAlert, cancelOvulationAlert,
+  scheduleDailyLogReminder, cancelDailyLogReminder,
+} from '../utils/notifications';
+import { getNextPeriodDate, CYCLE_LENGTH } from '../utils/cycleUtils';
 
 export default function ProfileSettingsScreen({ navigation }) {
   const { theme, isDark, toggleTheme } = useTheme();
@@ -23,7 +30,12 @@ export default function ProfileSettingsScreen({ navigation }) {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       setEmail(user.email || '');
-      const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+
+      const [{ data }, { data: periods }] = await Promise.all([
+        supabase.from('profiles').select('*').eq('id', user.id).single(),
+        supabase.from('periods').select('start_date').eq('user_id', user.id).order('start_date', { ascending: false }).limit(1),
+      ]);
+
       if (data) {
         setFirstName(data.first_name || data.username || '');
         setLastName(data.last_name || '');
@@ -35,7 +47,19 @@ export default function ProfileSettingsScreen({ navigation }) {
         setHeightIn(data.height_in ? String(data.height_in) : '');
         setCycleLength(data.cycle_length ? String(data.cycle_length) : '28');
         setPeriodLength(data.period_length ? String(data.period_length) : '5');
+        setCycleLen(data.cycle_length || CYCLE_LENGTH);
       }
+      if (periods?.[0]) setLastPeriodStart(periods[0].start_date);
+
+      // Load saved notification prefs
+      const [pr, oa, dl] = await Promise.all([
+        AsyncStorage.getItem('notif_period_reminder'),
+        AsyncStorage.getItem('notif_ovulation_alert'),
+        AsyncStorage.getItem('notif_daily_log'),
+      ]);
+      setPeriodReminder(pr === 'true');
+      setOvulationAlert(oa === 'true');
+      setDailyLog(dl === 'true');
     };
     loadProfile();
   }, []);
@@ -65,9 +89,11 @@ export default function ProfileSettingsScreen({ navigation }) {
   const [heightIn, setHeightIn]       = useState('');
   const [cycleLength, setCycleLength] = useState('28');
   const [periodLength, setPeriodLength] = useState('5');
-  const [periodReminder, setPeriodReminder]   = useState(true);
-  const [ovulationAlert, setOvulationAlert]   = useState(true);
+  const [periodReminder, setPeriodReminder]   = useState(false);
+  const [ovulationAlert, setOvulationAlert]   = useState(false);
   const [dailyLog, setDailyLog]               = useState(false);
+  const [lastPeriodStart, setLastPeriodStart] = useState(null);
+  const [cycleLen, setCycleLen]               = useState(CYCLE_LENGTH);
 
   const initials = `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase() || '?';
 
@@ -246,16 +272,52 @@ export default function ProfileSettingsScreen({ navigation }) {
         <View style={s.section}>
           <Text style={s.sectionTitle}>Notifications</Text>
           {[
-            ['Period Reminder', 'Notified 2 days before predicted period', periodReminder, setPeriodReminder],
-            ['Ovulation Alert', 'Notified on your predicted ovulation day', ovulationAlert, setOvulationAlert],
-            ['Daily Log Reminder', 'Reminded to log your symptoms each day', dailyLog, setDailyLog],
-          ].map(([label, sub, val, setter], i, arr) => (
+            {
+              label: 'Period Reminder',
+              sub: 'Notified 2 days before your predicted period',
+              val: periodReminder,
+              onToggle: async (v) => {
+                const granted = await requestPermissions();
+                if (!granted && v) { Alert.alert('Permission needed', 'Enable notifications in your device settings to use reminders.'); return; }
+                setPeriodReminder(v);
+                await AsyncStorage.setItem('notif_period_reminder', String(v));
+                if (v) await schedulePeriodReminder(lastPeriodStart ? getNextPeriodDate(lastPeriodStart, cycleLen) : null);
+                else   await cancelPeriodReminder();
+              },
+            },
+            {
+              label: 'Ovulation Alert',
+              sub: 'Notified on your predicted ovulation day',
+              val: ovulationAlert,
+              onToggle: async (v) => {
+                const granted = await requestPermissions();
+                if (!granted && v) { Alert.alert('Permission needed', 'Enable notifications in your device settings to use reminders.'); return; }
+                setOvulationAlert(v);
+                await AsyncStorage.setItem('notif_ovulation_alert', String(v));
+                if (v) await scheduleOvulationAlert(lastPeriodStart, cycleLen);
+                else   await cancelOvulationAlert();
+              },
+            },
+            {
+              label: 'Daily Log Reminder',
+              sub: 'Reminded at 8 PM each day to log your symptoms',
+              val: dailyLog,
+              onToggle: async (v) => {
+                const granted = await requestPermissions();
+                if (!granted && v) { Alert.alert('Permission needed', 'Enable notifications in your device settings to use reminders.'); return; }
+                setDailyLog(v);
+                await AsyncStorage.setItem('notif_daily_log', String(v));
+                if (v) await scheduleDailyLogReminder();
+                else   await cancelDailyLogReminder();
+              },
+            },
+          ].map(({ label, sub, val, onToggle }, i, arr) => (
             <View key={label} style={[s.toggleRow, i === arr.length - 1 && { borderBottomWidth: 0 }]}>
               <View style={s.toggleInfo}>
                 <Text style={s.toggleLabel}>{label}</Text>
                 <Text style={s.toggleSub}>{sub}</Text>
               </View>
-              <Switch value={val} onValueChange={setter} trackColor={{ false: theme.border, true: '#f9a8c4' }} thumbColor={val ? theme.primary : theme.card} />
+              <Switch value={val} onValueChange={onToggle} trackColor={{ false: theme.border, true: '#f9a8c4' }} thumbColor={val ? theme.primary : theme.card} />
             </View>
           ))}
         </View>

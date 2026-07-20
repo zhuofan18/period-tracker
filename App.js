@@ -22,6 +22,7 @@ import DailyLogScreen        from './screens/DailyLogScreen';
 import StatisticsScreen      from './screens/StatisticsScreen';
 import ProfileSettingsScreen from './screens/ProfileSettingsScreen';
 import ChatScreen            from './screens/ChatScreen';
+import LogHistoryScreen      from './screens/LogHistoryScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab   = createBottomTabNavigator();
@@ -100,6 +101,7 @@ function AppNavigator() {
         <Stack.Screen name="CycleSetup"      component={CycleCalendarScreen} />
         <Stack.Screen name="MainApp"         component={MainTabs} />
         <Stack.Screen name="Chat"            component={ChatScreen} />
+        <Stack.Screen name="LogHistory"      component={LogHistoryScreen} />
         <Stack.Screen name="Statistics"      component={StatisticsScreen} />
         <Stack.Screen name="ProfileSettings" component={ProfileSettingsScreen} />
       </Stack.Navigator>

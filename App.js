@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Text, View, ActivityIndicator } from 'react-native';
 import { supabase } from './lib/supabase';
+
+const navigationRef = createNavigationContainerRef();
 
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 
@@ -72,8 +74,17 @@ function AppNavigator() {
       setInitialRoute(session ? 'MainApp' : 'Login');
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setInitialRoute(session ? 'MainApp' : 'Login');
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        // User clicked the reset link — send them to the reset screen
+        if (navigationRef.isReady()) {
+          navigationRef.navigate('ResetPassword');
+        } else {
+          setInitialRoute('ResetPassword');
+        }
+      } else {
+        setInitialRoute(session ? 'MainApp' : 'Login');
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -88,7 +99,7 @@ function AppNavigator() {
   }
 
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={navigationRef}>
       <StatusBar style={theme.dark ? 'light' : 'dark'} />
       <Stack.Navigator
         initialRouteName={initialRoute}

@@ -65,14 +65,29 @@ export default function LoginFormScreen({ navigation }) {
     const { data: email, error: lookupError } = await supabase
       .rpc('get_email_by_username', { p_username: usernameVal.trim() });
 
-    if (lookupError || !email) {
+    if (lookupError) {
+      if (lookupError.message?.includes('does not exist')) {
+        setServerError('Setup incomplete: run schema_update_username_login.sql in your Supabase SQL Editor.');
+      } else {
+        setServerError(lookupError.message);
+      }
+      return false;
+    }
+
+    if (!email) {
       setServerError('No account found with that username.');
       return false;
     }
 
     const { error } = await supabase.auth.signInWithPassword({ email, password: passwordVal });
     if (error) {
-      setServerError('Incorrect password.');
+      if (error.message?.toLowerCase().includes('confirm')) {
+        setServerError('Please confirm your email address before logging in. Check your inbox.');
+      } else if (error.message?.toLowerCase().includes('invalid')) {
+        setServerError('Incorrect password.');
+      } else {
+        setServerError(error.message);
+      }
       return false;
     }
 

@@ -35,13 +35,22 @@ export default function CreateAccountScreen({ navigation }) {
     setServerError('');
     if (!username.trim() || !email.trim() || !email.includes('@') || password.length < 6 || password !== confirmPassword) return;
     setLoading(true);
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email: email.trim(),
       password,
       options: { data: { username: username.trim() } },
     });
     setLoading(false);
     if (error) { setServerError(error.message); return; }
+
+    if (!data.session) {
+      // Supabase email confirmation is enabled — user must confirm before logging in
+      setServerError(
+        '✅ Account created! Check your email for a confirmation link, then log in.'
+      );
+      return;
+    }
+
     navigation.navigate('Goals');
   };
 

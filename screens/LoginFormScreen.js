@@ -79,7 +79,7 @@ export default function LoginFormScreen({ navigation }) {
       return false;
     }
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password: passwordVal });
+    const { data: signInData, error } = await supabase.auth.signInWithPassword({ email, password: passwordVal });
     if (error) {
       if (error.message?.toLowerCase().includes('confirm')) {
         setServerError('Please confirm your email address before logging in. Check your inbox.');
@@ -89,6 +89,14 @@ export default function LoginFormScreen({ navigation }) {
         setServerError(error.message);
       }
       return false;
+    }
+
+    // Sync email into profiles so it's always stored and up to date
+    if (signInData?.user) {
+      await supabase.from('profiles').upsert(
+        { id: signInData.user.id, email: signInData.user.email },
+        { onConflict: 'id' }
+      );
     }
 
     if (saveAfter) await storeCredential(usernameVal.trim(), passwordVal);

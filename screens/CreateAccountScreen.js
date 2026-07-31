@@ -44,11 +44,18 @@ export default function CreateAccountScreen({ navigation }) {
     if (error) { setServerError(error.message); return; }
 
     if (!data.session) {
-      // Supabase email confirmation is enabled — user must confirm before logging in
       setServerError(
         '✅ Account created! Check your email for a confirmation link, then log in.'
       );
       return;
+    }
+
+    // Explicitly store email in profiles (backs up the trigger)
+    if (data.user) {
+      await supabase.from('profiles').upsert(
+        { id: data.user.id, username: username.trim(), email: email.trim() },
+        { onConflict: 'id' }
+      );
     }
 
     navigation.navigate('Goals');

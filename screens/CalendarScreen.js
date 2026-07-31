@@ -1,25 +1,12 @@
 import { useState, useCallback } from 'react';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Platform } from 'react-native';
 import FadeInView from '../components/FadeInView';
+import BloomButton from '../components/BloomButton';
 import { Calendar } from 'react-native-calendars';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { supabase } from '../lib/supabase';
 import { useTheme } from '../context/ThemeContext';
-import { getCycleDay, getPhaseForDay, PHASES, CYCLE_LENGTH, PERIOD_LENGTH } from '../utils/cycleUtils';
-
-function addDays(dateStr, n) {
-  const d = new Date(dateStr);
-  d.setDate(d.getDate() + n);
-  return d.toISOString().split('T')[0];
-}
-
-function getCurrentCycleStart(lastPeriodStartStr, cycleLength) {
-  const daysSince = Math.floor(
-    (new Date() - new Date(lastPeriodStartStr)) / (1000 * 60 * 60 * 24)
-  );
-  const cyclesPassed = Math.max(0, Math.floor(daysSince / cycleLength));
-  return addDays(lastPeriodStartStr, cyclesPassed * cycleLength);
-}
+import { getCycleDay, getPhaseForDay, PHASES, CYCLE_LENGTH, PERIOD_LENGTH, addDays, getCurrentCycleStart, getPhaseDates } from '../utils/cycleUtils';
 
 function buildMarkedDates(lastPeriodStartStr, cycleLength, periodLength) {
   const currentStart = getCurrentCycleStart(lastPeriodStartStr, cycleLength);
@@ -101,8 +88,10 @@ export default function CalendarScreen() {
     }, [])
   );
 
-  const markedDates = lastPeriodStart ? buildMarkedDates(lastPeriodStart, cycleLength, periodLength) : {};
-  const cycleDay    = lastPeriodStart ? getCycleDay(lastPeriodStart, cycleLength) : null;
+  const markedDates       = lastPeriodStart ? buildMarkedDates(lastPeriodStart, cycleLength, periodLength) : {};
+  const cycleDay          = lastPeriodStart ? getCycleDay(lastPeriodStart, cycleLength) : null;
+  const currentCycleStart = lastPeriodStart ? getCurrentCycleStart(lastPeriodStart, cycleLength) : null;
+  const phaseDates        = currentCycleStart ? getPhaseDates(currentCycleStart, cycleLength, periodLength) : null;
 
   const getSelectedInfo = (dateStr) => {
     if (!lastPeriodStart) return null;
@@ -131,9 +120,7 @@ export default function CalendarScreen() {
       <View style={s.header}>
         <View style={s.headerTopRow}>
           <Text style={s.headerTitle}>My Cycle</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('Chat')} style={s.chatBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-            <Text style={s.chatBtnText}>⋯</Text>
-          </TouchableOpacity>
+          <BloomButton onPress={() => navigation.navigate('Chat')} />
         </View>
         <Text style={s.headerSub}>{cycleDay ? `Day ${cycleDay} of ${cycleLength}` : 'No period logged yet'}</Text>
       </View>
@@ -192,12 +179,15 @@ export default function CalendarScreen() {
             <View key={key} style={s.legendRow}>
               <View style={[s.legendDot, { backgroundColor: val.color }]} />
               <Text style={s.legendLabel}>{val.label}</Text>
-              <Text style={s.legendDay}>Day {val.day}</Text>
+              <Text style={s.legendDay}>
+                {phaseDates ? phaseDates[key] : `Day ${val.day}`}
+              </Text>
             </View>
           ))}
           <View style={s.legendRow}>
             <View style={[s.legendDot, { backgroundColor: PHASES.period.color, opacity: 0.4 }]} />
             <Text style={s.legendLabel}>Predicted Next Period</Text>
+            {phaseDates && <Text style={s.legendDay}>{phaseDates.nextPeriod}</Text>}
           </View>
         </View>
       </ScrollView>

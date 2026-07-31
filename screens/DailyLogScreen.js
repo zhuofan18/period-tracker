@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, TextInput, Platform } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import FadeInView from '../components/FadeInView';
+import SymptomMoodPicker, { SYMPTOM_EMOJI_MAP, MOOD_EMOJI_MAP } from '../components/SymptomMoodPicker';
+import SwipeUpBar from '../components/SwipeUpBar';
 import { supabase } from '../lib/supabase';
 import { useTheme } from '../context/ThemeContext';
 import { getPhaseForDay, PHASES, CYCLE_LENGTH, PERIOD_LENGTH } from '../utils/cycleUtils';
@@ -12,16 +14,13 @@ const PHASE_QUESTIONS = {
     sections: [
       { title: 'Flow Intensity', type: 'single', options: ['Spotting', 'Light', 'Medium', 'Heavy', 'Very Heavy'] },
       { title: 'Pain Level',    type: 'single', options: ['None', 'Mild', 'Moderate', 'Severe'] },
-      { title: 'Symptoms',     type: 'multi',  options: ['Cramps', 'Bloating', 'Headache', 'Back pain', 'Nausea', 'Fatigue', 'Tender breasts', 'Diarrhoea'] },
-      { title: 'Mood',         type: 'multi',  options: ['Emotional 😢', 'Irritable 😤', 'Tired 😴', 'Calm 😌', 'Anxious 😰', 'Low 😞'] },
     ],
   },
   follicular: {
     intro: 'Your body is recharging after your period. Log how you feel.',
     sections: [
-      { title: 'Energy Level',    type: 'single', options: ['Very Low', 'Low', 'Medium', 'High', 'Very High'] },
+      { title: 'Energy Level',   type: 'single', options: ['Very Low', 'Low', 'Medium', 'High', 'Very High'] },
       { title: 'Cervical Mucus', type: 'single', options: ['Dry', 'Sticky', 'Creamy', 'Not sure'] },
-      { title: 'Mood',           type: 'multi',  options: ['Happy 😊', 'Motivated 💪', 'Calm 😌', 'Anxious 😰', 'Tired 😴', 'Social 🥳'] },
       { title: 'Exercise Today', type: 'single', options: ['None', 'Light walk', 'Moderate workout', 'Intense workout'] },
     ],
   },
@@ -30,26 +29,20 @@ const PHASE_QUESTIONS = {
     sections: [
       { title: 'Cervical Mucus', type: 'single', options: ['Creamy', 'Watery', 'Egg-white', 'Dry', 'Not sure'] },
       { title: 'Libido',        type: 'single', options: ['Low', 'Normal', 'High', 'Very High'] },
-      { title: 'Symptoms',      type: 'multi',  options: ['Mild cramping', 'Breast tenderness', 'Bloating', 'Increased energy', 'Heightened senses', 'None'] },
-      { title: 'Mood',          type: 'multi',  options: ['Confident 😎', 'Energetic ⚡', 'Romantic 💕', 'Happy 😊', 'Calm 😌', 'Anxious 😰'] },
     ],
   },
   ovulation: {
     intro: "It's your ovulation day! Your body is at peak fertility.",
     sections: [
-      { title: 'Ovulation Symptoms', type: 'multi',  options: ['Mittelschmerz (side cramp)', 'Egg-white discharge', 'Breast tenderness', 'Bloating', 'High libido', 'Heightened smell', 'None'] },
-      { title: 'Cervical Mucus',     type: 'single', options: ['Egg-white', 'Watery', 'Stretchy', 'Other'] },
-      { title: 'Libido',             type: 'single', options: ['Low', 'Normal', 'High', 'Very High'] },
-      { title: 'Mood',               type: 'multi',  options: ['Confident 😎', 'Energetic ⚡', 'Romantic 💕', 'Happy 😊', 'Focused 🎯', 'Calm 😌'] },
+      { title: 'Cervical Mucus', type: 'single', options: ['Egg-white', 'Watery', 'Stretchy', 'Other'] },
+      { title: 'Libido',         type: 'single', options: ['Low', 'Normal', 'High', 'Very High'] },
     ],
   },
   luteal: {
     intro: "You're in the luteal phase. Your body is winding down towards your next period.",
     sections: [
-      { title: 'PMS Symptoms',  type: 'multi',  options: ['Bloating', 'Mood swings', 'Food cravings', 'Breast tenderness', 'Fatigue', 'Irritability', 'Headache', 'Acne', 'None'] },
       { title: 'Energy Level',  type: 'single', options: ['Very Low', 'Low', 'Medium', 'High'] },
       { title: 'Sleep Quality', type: 'single', options: ['Poor', 'Fair', 'Good', 'Great'] },
-      { title: 'Mood',          type: 'multi',  options: ['Irritable 😤', 'Anxious 😰', 'Sad 😢', 'Tired 😴', 'Calm 😌', 'Okay 🙂', 'Sensitive 🥺'] },
     ],
   },
 };
@@ -72,6 +65,9 @@ export default function DailyLogScreen() {
   const [notes, setNotes]     = useState('');
   const [saving, setSaving]   = useState(false);
   const [saved, setSaved]     = useState(false);
+
+  const [symptomPickerVisible, setSymptomPickerVisible] = useState(false);
+  const [moodPickerVisible, setMoodPickerVisible]       = useState(false);
 
   // Update selected date when navigated from LogHistory
   useEffect(() => {
@@ -276,6 +272,61 @@ export default function DailyLogScreen() {
           </View>
         ))}
 
+        {/* ── Symptoms picker card ── */}
+        <View style={s.card}>
+          <View style={s.pickerCardHeader}>
+            <Text style={s.cardTitle}>Symptoms</Text>
+            <TouchableOpacity
+              style={s.pickerAddBtn}
+              onPress={() => setSymptomPickerVisible(true)}
+              activeOpacity={0.8}
+            >
+              <Text style={s.pickerAddBtnText}>+ Add</Text>
+            </TouchableOpacity>
+          </View>
+          {(answers.Symptoms || []).length > 0 ? (
+            <View style={s.pillWrap}>
+              {(answers.Symptoms || []).map(sym => (
+                <View key={sym} style={s.pill}>
+                  <Text style={s.pillText}>{SYMPTOM_EMOJI_MAP[sym] || '🔹'} {sym}</Text>
+                </View>
+              ))}
+            </View>
+          ) : (
+            <TouchableOpacity onPress={() => setSymptomPickerVisible(true)} activeOpacity={0.7}>
+              <Text style={s.pickerEmpty}>Tap to log symptoms</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {/* ── Mood picker card ── */}
+        <View style={s.card}>
+          <View style={s.pickerCardHeader}>
+            <Text style={s.cardTitle}>Mood</Text>
+            <TouchableOpacity
+              style={[s.pickerAddBtn, { borderColor: '#c084fc' }]}
+              onPress={() => setMoodPickerVisible(true)}
+              activeOpacity={0.8}
+            >
+              <Text style={[s.pickerAddBtnText, { color: '#c084fc' }]}>+ Add</Text>
+            </TouchableOpacity>
+          </View>
+          {(answers.Mood || []).length > 0 ? (
+            <View style={s.pillWrap}>
+              {(answers.Mood || []).map(m => (
+                <View key={m} style={[s.pill, s.pillMood]}>
+                  <Text style={s.pillText}>{MOOD_EMOJI_MAP[m] || '😊'} {m}</Text>
+                </View>
+              ))}
+            </View>
+          ) : (
+            <TouchableOpacity onPress={() => setMoodPickerVisible(true)} activeOpacity={0.7}>
+              <Text style={s.pickerEmpty}>Tap to log your mood</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {/* ── Notes ── */}
         <View style={s.card}>
           <Text style={s.cardTitle}>Personal Notes</Text>
           <Text style={s.cardSub}>Describe how you feel in your own words</Text>
@@ -300,6 +351,29 @@ export default function DailyLogScreen() {
           <Text style={s.saveBtnText}>{saveBtnLabel}</Text>
         </TouchableOpacity>
       </ScrollView>
+
+      <SwipeUpBar
+        onSwipe={saveLog}
+        disabled={saving || !userId || saved}
+        label={saved ? 'Saved ✓' : saving ? 'Saving…' : 'Swipe up to save'}
+        color={phase.color}
+      />
+
+      {/* ── Pickers ── */}
+      <SymptomMoodPicker
+        visible={symptomPickerVisible}
+        onClose={() => setSymptomPickerVisible(false)}
+        onSave={(sel) => { setSaved(false); setAnswers(prev => ({ ...prev, Symptoms: sel })); }}
+        selected={answers.Symptoms || []}
+        mode="symptom"
+      />
+      <SymptomMoodPicker
+        visible={moodPickerVisible}
+        onClose={() => setMoodPickerVisible(false)}
+        onSave={(sel) => { setSaved(false); setAnswers(prev => ({ ...prev, Mood: sel })); }}
+        selected={answers.Mood || []}
+        mode="mood"
+      />
     </FadeInView>
   );
 }
@@ -353,7 +427,22 @@ const styles = (theme) => StyleSheet.create({
   checkBox:          { width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: theme.border, alignItems: 'center', justifyContent: 'center' },
   checkBoxSelected:  { backgroundColor: theme.primary, borderColor: theme.primary },
   checkMark:         { color: '#fff', fontSize: 12, fontWeight: '700' },
-  notesInput:        { borderWidth: 1, borderColor: theme.border, borderRadius: 10, padding: 12, fontSize: 14, color: theme.text, minHeight: 120, marginTop: 8, backgroundColor: theme.inputBg },
+  notesInput: { borderWidth: 1, borderColor: theme.border, borderRadius: 10, padding: 12, fontSize: 14, color: theme.text, minHeight: 120, marginTop: 8, backgroundColor: theme.inputBg },
   saveBtn:    { borderRadius: 14, paddingVertical: 16, alignItems: 'center', marginBottom: 8 },
   saveBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+
+  // ── Picker card ──
+  pickerCardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
+  pickerAddBtn:     { borderWidth: 1.5, borderColor: '#e75480', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 4 },
+  pickerAddBtnText: { fontSize: 13, color: '#e75480', fontWeight: '600' },
+  pickerEmpty:      { fontSize: 13, color: theme.muted, fontStyle: 'italic' },
+  pillWrap:  { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  pill: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: '#e7548018', borderRadius: 20,
+    paddingHorizontal: 10, paddingVertical: 5,
+    borderWidth: 1, borderColor: '#e7548040',
+  },
+  pillMood: { backgroundColor: '#c084fc18', borderColor: '#c084fc40' },
+  pillText: { fontSize: 13, color: theme.text },
 });

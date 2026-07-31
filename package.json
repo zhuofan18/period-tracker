@@ -1,5 +1,5 @@
 {
-  "name": "period-tracker",
+  "name": "luna",
   "version": "1.0.0",
   "main": "index.js",
   "dependencies": {
@@ -12,7 +12,9 @@
     "babel-preset-expo": "^57.0.3",
     "expo": "~56.0.12",
     "expo-device": "~56.0.4",
+    "expo-linear-gradient": "~56.0.4",
     "expo-notifications": "~56.0.21",
+    "expo-splash-screen": "~56.0.14",
     "expo-status-bar": "~56.0.4",
     "react": "19.2.3",
     "react-dom": "19.2.3",
@@ -25,10 +27,10 @@
     "react-native-web": "^0.21.2"
   },
   "scripts": {
-    "start": "expo start",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
-    "web": "expo start --web"
+    "start": "expo start --port 8082",
+    "android": "expo start --android --port 8082",
+    "ios": "expo start --ios --port 8082",
+    "web": "expo start --web --port 8082"
   },
   "private": true,
   "devDependencies": {

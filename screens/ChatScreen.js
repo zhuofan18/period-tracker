@@ -133,8 +133,18 @@ export default function ChatScreen({ navigation }) {
             onChangeText={setInput}
             multiline
             maxLength={500}
-            onSubmitEditing={send}
             blurOnSubmit={false}
+            {...Platform.select({
+              web: {
+                onKeyDown: (e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    send();
+                  }
+                },
+              },
+              default: {},
+            })}
           />
           <TouchableOpacity
             style={[s.sendBtn, (!input.trim() || loading) && s.sendBtnOff]}

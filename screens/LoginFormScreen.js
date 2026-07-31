@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   StyleSheet, Text, View, TextInput, TouchableOpacity,
   ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator,
@@ -47,6 +47,8 @@ export default function LoginFormScreen({ navigation }) {
   // Saved credential found by the browser
   const [savedCred, setSavedCred]       = useState(null);
   const [credLoading, setCredLoading]   = useState(false);
+
+  const passwordRef = useRef(null);
 
   useEffect(() => {
     getSavedCredential().then(cred => {
@@ -172,7 +174,9 @@ export default function LoginFormScreen({ navigation }) {
           autoCapitalize="none"
           autoCorrect={false}
           autoComplete="username"
-          // web-only name attribute for browser autofill
+          returnKeyType="next"
+          blurOnSubmit={false}
+          onSubmitEditing={() => passwordRef.current?.focus()}
           {...(Platform.OS === 'web' ? { name: 'username' } : {})}
           value={username}
           onChangeText={(v) => { setUsername(v); setServerError(''); }}
@@ -182,11 +186,14 @@ export default function LoginFormScreen({ navigation }) {
         <Text style={s.label}>Password</Text>
         <View style={[s.passwordWrapper, fieldErrors.password && s.inputError]}>
           <TextInput
+            ref={passwordRef}
             style={s.passwordInput}
             placeholder="Enter your password"
             placeholderTextColor={theme.placeholder}
             secureTextEntry={!showPassword}
             autoComplete="current-password"
+            returnKeyType="go"
+            onSubmitEditing={handleLogin}
             {...(Platform.OS === 'web' ? { name: 'password' } : {})}
             value={password}
             onChangeText={(v) => { setPassword(v); setServerError(''); }}

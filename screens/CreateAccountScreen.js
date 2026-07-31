@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { StyleSheet, Text, View, TextInput, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import { supabase } from '../lib/supabase';
 import { useTheme } from '../context/ThemeContext';
@@ -13,6 +13,10 @@ export default function CreateAccountScreen({ navigation }) {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword]       = useState(false);
   const [submitted, setSubmitted]             = useState(false);
+
+  const emailRef           = useRef(null);
+  const passwordRef        = useRef(null);
+  const confirmPasswordRef = useRef(null);
   const [serverError, setServerError]         = useState('');
   const [loading, setLoading]                 = useState(false);
 
@@ -76,6 +80,9 @@ export default function CreateAccountScreen({ navigation }) {
           placeholder="Choose a username"
           placeholderTextColor={theme.placeholder}
           autoCapitalize="none"
+          returnKeyType="next"
+          blurOnSubmit={false}
+          onSubmitEditing={() => emailRef.current?.focus()}
           value={username}
           onChangeText={setUsername}
         />
@@ -83,11 +90,15 @@ export default function CreateAccountScreen({ navigation }) {
 
         <Text style={s.label}>Email</Text>
         <TextInput
+          ref={emailRef}
           style={[s.input, fieldErrors.email && s.inputError]}
           placeholder="Enter your email"
           placeholderTextColor={theme.placeholder}
           autoCapitalize="none"
           keyboardType="email-address"
+          returnKeyType="next"
+          blurOnSubmit={false}
+          onSubmitEditing={() => passwordRef.current?.focus()}
           value={email}
           onChangeText={setEmail}
         />
@@ -96,10 +107,14 @@ export default function CreateAccountScreen({ navigation }) {
         <Text style={s.label}>Password</Text>
         <View style={[s.passwordWrapper, fieldErrors.password && s.inputError]}>
           <TextInput
+            ref={passwordRef}
             style={s.passwordInput}
             placeholder="At least 6 characters"
             placeholderTextColor={theme.placeholder}
             secureTextEntry={!showPassword}
+            returnKeyType="next"
+            blurOnSubmit={false}
+            onSubmitEditing={() => confirmPasswordRef.current?.focus()}
             value={password}
             onChangeText={setPassword}
           />
@@ -111,10 +126,13 @@ export default function CreateAccountScreen({ navigation }) {
 
         <Text style={s.label}>Confirm Password</Text>
         <TextInput
+          ref={confirmPasswordRef}
           style={[s.input, fieldErrors.confirmPassword && s.inputError]}
           placeholder="Re-enter your password"
           placeholderTextColor={theme.placeholder}
           secureTextEntry={!showPassword}
+          returnKeyType="go"
+          onSubmitEditing={handleCreate}
           value={confirmPassword}
           onChangeText={(v) => { setConfirmPassword(v); }}
         />

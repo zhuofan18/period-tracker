@@ -3,8 +3,13 @@ import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Text, View, ActivityIndicator } from 'react-native';
+import { Text, View } from 'react-native';
+import * as SplashScreen from 'expo-splash-screen';
+import SplashView from './components/SplashView';
 import { supabase } from './lib/supabase';
+
+// Keep the native splash visible until we call hideAsync()
+SplashScreen.preventAutoHideAsync();
 
 const navigationRef = createNavigationContainerRef();
 
@@ -68,15 +73,18 @@ function MainTabs() {
 function AppNavigator() {
   const { theme } = useTheme();
   const [initialRoute, setInitialRoute] = useState(null);
+  const [showSplash, setShowSplash]     = useState(true);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setInitialRoute(session ? 'MainApp' : 'Login');
+      // Hide native splash, then fade out our React splash
+      SplashScreen.hideAsync();
+      setTimeout(() => SplashView.hide(), 100);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'PASSWORD_RECOVERY') {
-        // User clicked the reset link — send them to the reset screen
         if (navigationRef.isReady()) {
           navigationRef.navigate('ResetPassword');
         } else {
@@ -91,16 +99,15 @@ function AppNavigator() {
   }, []);
 
   if (!initialRoute) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.background }}>
-        <ActivityIndicator size="large" color={theme.primary} />
-      </View>
-    );
+    return showSplash ? (
+      <SplashView onReady={() => setShowSplash(false)} />
+    ) : null;
   }
 
   return (
+    <>
     <NavigationContainer ref={navigationRef}>
-      <StatusBar style={theme.dark ? 'light' : 'dark'} />
+      <StatusBar style="light" />
       <Stack.Navigator
         initialRouteName={initialRoute}
         screenOptions={{
@@ -134,6 +141,8 @@ function AppNavigator() {
         <Stack.Screen name="ProfileSettings" component={ProfileSettingsScreen} />
       </Stack.Navigator>
     </NavigationContainer>
+    {showSplash && <SplashView onReady={() => setShowSplash(false)} />}
+    </>
   );
 }
 

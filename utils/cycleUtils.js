@@ -1,6 +1,41 @@
 export const CYCLE_LENGTH  = 28;
 export const PERIOD_LENGTH = 5;
 
+export function addDays(dateStr, n) {
+  const d = new Date(dateStr);
+  d.setDate(d.getDate() + n);
+  return d.toISOString().split('T')[0];
+}
+
+function parseLocal(dateStr) {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+
+export function fmtDate(dateStr) {
+  return parseLocal(dateStr).toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
+}
+
+export function getCurrentCycleStart(lastPeriodStartStr, cycleLength) {
+  const daysSince = Math.floor(
+    (new Date() - new Date(lastPeriodStartStr)) / (1000 * 60 * 60 * 24)
+  );
+  const cyclesPassed = Math.max(0, Math.floor(daysSince / cycleLength));
+  return addDays(lastPeriodStartStr, cyclesPassed * cycleLength);
+}
+
+export function getPhaseDates(cycleStart, cycleLength, periodLength) {
+  const d = (n) => fmtDate(addDays(cycleStart, n));
+  return {
+    period:     `${d(0)} – ${d(periodLength - 1)}`,
+    follicular: `${d(periodLength)} – ${d(12)}`,
+    fertile:    `${d(9)} – ${d(16)}`,
+    ovulation:  d(13),
+    luteal:     `${d(14)} – ${d(cycleLength - 1)}`,
+    nextPeriod: d(cycleLength),
+  };
+}
+
 export const PHASES = {
   period:     { label: 'Menstrual Phase',  color: '#e75480', textColor: '#fff',    day: '1–5'   },
   follicular: { label: 'Follicular Phase', color: '#fbbf24', textColor: '#78350f', day: '6–13'  },

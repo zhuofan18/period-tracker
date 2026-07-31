@@ -3,28 +3,42 @@ import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Platform, Activit
 import { useNavigation } from '@react-navigation/native';
 import { supabase } from '../lib/supabase';
 import { useTheme } from '../context/ThemeContext';
+import { SYMPTOM_EMOJI_MAP, MOOD_EMOJI_MAP } from '../components/SymptomMoodPicker';
 import { getPhaseForDay, PHASES, CYCLE_LENGTH, PERIOD_LENGTH } from '../utils/cycleUtils';
 
-function getSummaryTags(phase_answers) {
-  if (!phase_answers) return [];
-  const tags = [];
-  for (const [, val] of Object.entries(phase_answers)) {
-    if (Array.isArray(val)) {
-      tags.push(...val.slice(0, 2));
-    } else if (val) {
-      tags.push(val);
+// Label → short display label for phase-specific keys
+const KEY_LABELS = {
+  'Flow Intensity': 'Flow',
+  'Pain Level':     'Pain',
+  'Energy Level':   'Energy',
+  'Sleep Quality':  'Sleep',
+  'Cervical Mucus': 'Mucus',
+  'Libido':         'Libido',
+  'Exercise Today': 'Exercise',
+};
+
+function parseLog(phase_answers) {
+  if (!phase_answers) return { kvPairs: [], symptoms: [], moods: [] };
+
+  const symptoms = (phase_answers.Symptoms || []).slice(0, 8);
+  const moods    = (phase_answers.Mood    || []).slice(0, 6);
+  const kvPairs  = [];
+
+  for (const [key, val] of Object.entries(phase_answers)) {
+    if (key === 'Symptoms' || key === 'Mood') continue;
+    if (typeof val === 'string' && val) {
+      kvPairs.push({ key: KEY_LABELS[key] || key, val });
     }
-    if (tags.length >= 4) break;
   }
-  return tags.slice(0, 4);
+
+  return { kvPairs: kvPairs.slice(0, 4), symptoms, moods };
 }
 
 function groupByMonth(logs) {
   const sections = [];
   const map = {};
   for (const log of logs) {
-    const d = new Date(log.log_date);
-    const key = d.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+    const key = new Date(log.log_date).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
     if (!map[key]) { map[key] = []; sections.push({ title: key, data: map[key] }); }
     map[key].push(log);
   }
@@ -38,9 +52,9 @@ export default function LogHistoryScreen() {
 
   const [logs, setLogs]               = useState([]);
   const [lastPeriodStart, setLastPeriodStart] = useState(null);
-  const [cycleLength, setCycleLength] = useState(CYCLE_LENGTH);
+  const [cycleLength, setCycleLength]  = useState(CYCLE_LENGTH);
   const [periodLength, setPeriodLength] = useState(PERIOD_LENGTH);
-  const [loading, setLoading]         = useState(true);
+  const [loading, setLoading]          = useState(true);
 
   useEffect(() => {
     const load = async () => {
@@ -50,7 +64,10 @@ export default function LogHistoryScreen() {
       const [{ data: profile }, { data: periods }, { data: logData }] = await Promise.all([
         supabase.from('profiles').select('cycle_length, period_length').eq('id', user.id).single(),
         supabase.from('periods').select('start_date').eq('user_id', user.id).order('start_date', { ascending: false }).limit(1),
-        supabase.from('daily_logs').select('log_date, phase_answers, notes').eq('user_id', user.id).order('log_date', { ascending: false }),
+        supabase.from('daily_logs')
+          .select('log_date, phase_answers, notes, updated_at')
+          .eq('user_id', user.id)
+          .order('log_date', { ascending: false }),
       ]);
 
       if (profile?.cycle_length)  setCycleLength(profile.cycle_length);
@@ -62,21 +79,19 @@ export default function LogHistoryScreen() {
     load();
   }, []);
 
-  const getPhaseForDate = (dateStr) => {
-    if (!lastPeriodStart) return null;
-    const diff = Math.floor((new Date(dateStr) - new Date(lastPeriodStart)) / (1000 * 60 * 60 * 24));
-    if (diff < 0) return null;
-    const day = (diff % cycleLength) + 1;
-    return getPhaseForDay(day, periodLength);
+  const getPhaseKey = (dateStr) => {
+    if (!lastPeriodStart) return 'follicular';
+    const diff = Math.floor((new Date(dateStr) - new Date(lastPeriodStart)) / 86400000);
+    if (diff < 0) return 'follicular';
+    return getPhaseForDay((diff % cycleLength) + 1, periodLength);
   };
 
-  const openLog = (dateStr) => {
+  const openLog = (dateStr) =>
     navigation.navigate('MainApp', { screen: 'Log', params: { date: dateStr } });
-  };
 
   if (loading) {
     return (
-      <View style={[s.screen, { justifyContent: 'center', alignItems: 'center' }]}>
+      <View style={[s.screen, s.center]}>
         <ActivityIndicator size="large" color="#e75480" />
       </View>
     );
@@ -86,6 +101,7 @@ export default function LogHistoryScreen() {
 
   return (
     <View style={s.screen}>
+      {/* Header */}
       <View style={s.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
           <Text style={s.backArrow}>←</Text>
@@ -98,46 +114,83 @@ export default function LogHistoryScreen() {
         <View style={s.empty}>
           <Text style={s.emptyEmoji}>📋</Text>
           <Text style={s.emptyTitle}>No logs yet</Text>
-          <Text style={s.emptySub}>Start logging your daily symptoms and they'll appear here.</Text>
+          <Text style={s.emptySub}>Save a daily log and it will appear here for easy reference.</Text>
         </View>
       ) : (
-        <ScrollView contentContainerStyle={s.content}>
+        <ScrollView contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
           {sections.map((section) => (
             <View key={section.title}>
               <Text style={s.monthHeader}>{section.title}</Text>
               {section.data.map((log) => {
-                const phaseKey = getPhaseForDate(log.log_date) || 'follicular';
+                const phaseKey = getPhaseKey(log.log_date);
                 const phase    = PHASES[phaseKey];
-                const tags     = getSummaryTags(log.phase_answers);
                 const date     = new Date(log.log_date);
                 const dayLabel = date.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+                const { kvPairs, symptoms, moods } = parseLog(log.phase_answers);
+                const hasContent = kvPairs.length > 0 || symptoms.length > 0 || moods.length > 0 || log.notes;
 
                 return (
                   <TouchableOpacity
                     key={log.log_date}
-                    style={[s.logCard, { borderLeftColor: phase.color }]}
+                    style={[s.card, { borderLeftColor: phase.color }]}
                     onPress={() => openLog(log.log_date)}
                     activeOpacity={0.8}
                   >
-                    <View style={s.logTop}>
-                      <Text style={s.logDate}>{dayLabel}</Text>
+                    {/* Top row: date + phase */}
+                    <View style={s.cardTop}>
+                      <Text style={s.cardDate}>{dayLabel}</Text>
                       <View style={[s.phaseBadge, { backgroundColor: phase.color + '22' }]}>
                         <Text style={[s.phaseBadgeText, { color: phase.color }]}>{phase.label}</Text>
                       </View>
                     </View>
 
-                    {tags.length > 0 && (
-                      <View style={s.tags}>
-                        {tags.map((tag, i) => (
-                          <View key={i} style={s.tag}>
-                            <Text style={s.tagText}>{tag}</Text>
+                    {!hasContent && (
+                      <Text style={s.emptyLog}>No details recorded</Text>
+                    )}
+
+                    {/* Phase-specific answers: Flow, Pain, Energy, etc. */}
+                    {kvPairs.length > 0 && (
+                      <View style={s.kvRow}>
+                        {kvPairs.map(({ key, val }) => (
+                          <View key={key} style={s.kvChip}>
+                            <Text style={s.kvKey}>{key}</Text>
+                            <Text style={s.kvVal}>{val}</Text>
                           </View>
                         ))}
                       </View>
                     )}
 
+                    {/* Symptoms */}
+                    {symptoms.length > 0 && (
+                      <View style={s.section}>
+                        <Text style={s.sectionLabel}>Symptoms</Text>
+                        <View style={s.pillRow}>
+                          {symptoms.map(sym => (
+                            <View key={sym} style={s.pill}>
+                              <Text style={s.pillText}>{SYMPTOM_EMOJI_MAP[sym] || '🔹'} {sym}</Text>
+                            </View>
+                          ))}
+                        </View>
+                      </View>
+                    )}
+
+                    {/* Moods */}
+                    {moods.length > 0 && (
+                      <View style={s.section}>
+                        <Text style={s.sectionLabel}>Mood</Text>
+                        <View style={s.pillRow}>
+                          {moods.map(m => (
+                            <View key={m} style={[s.pill, s.pillMood]}>
+                              <Text style={s.pillText}>{MOOD_EMOJI_MAP[m] || '😊'} {m}</Text>
+                            </View>
+                          ))}
+                        </View>
+                      </View>
+                    )}
+
+                    {/* Notes preview */}
                     {log.notes ? (
-                      <Text style={s.notesPreview} numberOfLines={1}>📝 {log.notes}</Text>
+                      <Text style={s.notesPreview} numberOfLines={2}>📝 {log.notes}</Text>
                     ) : null}
 
                     <Text style={s.tapHint}>Tap to view or edit →</Text>
@@ -153,7 +206,9 @@ export default function LogHistoryScreen() {
 }
 
 const styles = (theme) => StyleSheet.create({
-  screen: { flex: 1, backgroundColor: theme.surface },
+  screen:  { flex: 1, backgroundColor: theme.surface },
+  center:  { justifyContent: 'center', alignItems: 'center' },
+
   header: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
     paddingHorizontal: 20,
@@ -173,22 +228,49 @@ const styles = (theme) => StyleSheet.create({
   emptySub:   { fontSize: 13, color: theme.muted, textAlign: 'center', lineHeight: 20 },
 
   content:     { padding: 16, paddingBottom: 32 },
-  monthHeader: { fontSize: 13, fontWeight: '700', color: theme.muted, textTransform: 'uppercase', letterSpacing: 0.8, marginTop: 20, marginBottom: 10, marginLeft: 4 },
-
-  logCard: {
-    backgroundColor: theme.card, borderRadius: 14, padding: 14,
-    marginBottom: 10, borderLeftWidth: 4,
-    ...Platform.select({ web: { boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }, default: { shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 4, elevation: 1 } }),
+  monthHeader: {
+    fontSize: 12, fontWeight: '700', color: theme.muted,
+    textTransform: 'uppercase', letterSpacing: 0.9,
+    marginTop: 24, marginBottom: 10, marginLeft: 4,
   },
-  logTop:       { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
-  logDate:      { fontSize: 14, fontWeight: '700', color: theme.text },
-  phaseBadge:   { borderRadius: 20, paddingHorizontal: 10, paddingVertical: 3 },
+
+  card: {
+    backgroundColor: theme.card, borderRadius: 16, padding: 14,
+    marginBottom: 10, borderLeftWidth: 4,
+    ...Platform.select({
+      web:     { boxShadow: '0 2px 8px rgba(0,0,0,0.06)' },
+      default: { shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 4, elevation: 2 },
+    }),
+  },
+  cardTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
+  cardDate: { fontSize: 14, fontWeight: '700', color: theme.text },
+  phaseBadge:     { borderRadius: 20, paddingHorizontal: 10, paddingVertical: 3 },
   phaseBadgeText: { fontSize: 11, fontWeight: '700' },
 
-  tags:    { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 6 },
-  tag:     { backgroundColor: theme.optionBg, borderRadius: 8, paddingHorizontal: 9, paddingVertical: 4 },
-  tagText: { fontSize: 12, color: theme.text },
+  emptyLog: { fontSize: 12, color: theme.muted, fontStyle: 'italic', marginBottom: 8 },
 
-  notesPreview: { fontSize: 12, color: theme.muted, marginBottom: 4, fontStyle: 'italic' },
-  tapHint:      { fontSize: 11, color: theme.muted, marginTop: 4, textAlign: 'right' },
+  kvRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 10 },
+  kvChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: theme.surface, borderRadius: 8,
+    paddingHorizontal: 9, paddingVertical: 5,
+    borderWidth: 1, borderColor: theme.border,
+  },
+  kvKey: { fontSize: 11, color: theme.muted, fontWeight: '600' },
+  kvVal: { fontSize: 12, color: theme.text, fontWeight: '700' },
+
+  section:      { marginBottom: 8 },
+  sectionLabel: { fontSize: 11, fontWeight: '700', color: theme.muted, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 },
+  pillRow:      { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  pill: {
+    flexDirection: 'row', alignItems: 'center', gap: 3,
+    backgroundColor: '#e7548015', borderRadius: 20,
+    paddingHorizontal: 9, paddingVertical: 4,
+    borderWidth: 1, borderColor: '#e7548035',
+  },
+  pillMood: { backgroundColor: '#c084fc15', borderColor: '#c084fc35' },
+  pillText: { fontSize: 12, color: theme.text },
+
+  notesPreview: { fontSize: 12, color: theme.muted, fontStyle: 'italic', marginTop: 6, marginBottom: 2, lineHeight: 17 },
+  tapHint:      { fontSize: 11, color: theme.muted, marginTop: 8, textAlign: 'right' },
 });

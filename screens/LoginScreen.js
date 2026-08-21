@@ -1,5 +1,6 @@
 import { StyleSheet, Text, View, TouchableOpacity, Platform } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
+import { fontFamily } from '../theme/typography';
 
 export default function LoginScreen({ navigation }) {
   const { theme } = useTheme();
@@ -57,7 +58,7 @@ const styles = (theme) => StyleSheet.create({
   },
   appName: {
     fontSize: 40,
-    fontWeight: '800',
+    fontFamily: fontFamily.extrabold,
     color: theme.primary,
     letterSpacing: -0.5,
   },
@@ -78,7 +79,7 @@ const styles = (theme) => StyleSheet.create({
   primaryBtnText: {
     color: '#fff',
     fontSize: 16,
-    fontWeight: '700',
+    fontFamily: fontFamily.bold,
   },
   secondaryBtn: {
     backgroundColor: 'transparent',
@@ -91,7 +92,7 @@ const styles = (theme) => StyleSheet.create({
   secondaryBtnText: {
     color: theme.primary,
     fontSize: 16,
-    fontWeight: '700',
+    fontFamily: fontFamily.bold,
   },
   disclaimer: {
     fontSize: 11,

@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
-import { StyleSheet, Text, View, ScrollView, Image, TouchableOpacity, Modal, Platform, Linking } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Modal, Platform } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import FadeInView from '../components/FadeInView';
 import BloomButton from '../components/BloomButton';
 import { Calendar } from 'react-native-calendars';
@@ -7,7 +8,9 @@ import { useFocusEffect } from '@react-navigation/native';
 import { supabase } from '../lib/supabase';
 import { useTheme } from '../context/ThemeContext';
 import { getCycleDay, getPhaseForDay, getDaysUntilNextPeriod, getNextPeriodDate, PHASES, CYCLE_LENGTH, PERIOD_LENGTH, getCurrentCycleStart, getPhaseDates } from '../utils/cycleUtils';
-import { EDUCATION_VIDEOS, HEALTH_FACTS } from '../utils/educationData';
+import { EDUCATION_TOPICS, HEALTH_FACTS } from '../utils/educationData';
+import { space, radius, shadow } from '../theme/spacing';
+import { fontFamily, type } from '../theme/typography';
 
 function getGreeting() {
   const h = new Date().getHours();
@@ -30,38 +33,49 @@ const today = new Date().toISOString().split('T')[0];
 
 // ─── Education sub-components ─────────────────────────────────────────────────
 
-function VideoCard({ video, s }) {
-  const [imgError, setImgError] = useState(false);
-  const open = () => Linking.openURL(video.url).catch(() => {});
+function ArticleCard({ topic, onPress, s }) {
   return (
-    <TouchableOpacity style={s.videoCard} onPress={open} activeOpacity={0.85}>
-      <View style={s.videoThumbWrap}>
-        {imgError ? (
-          <View style={[s.videoThumbFallback, { backgroundColor: video.color + '22' }]}>
-            <Text style={s.videoThumbEmoji}>{video.emoji}</Text>
-          </View>
-        ) : (
-          <Image
-            source={{ uri: `https://img.youtube.com/vi/${video.videoId}/mqdefault.jpg` }}
-            style={s.videoThumb}
-            onError={() => setImgError(true)}
-            resizeMode="cover"
-          />
-        )}
-        {/* Play button overlay */}
-        <View style={s.playOverlay}>
-          <View style={s.playBtn}>
-            <Text style={s.playBtnIcon}>▶</Text>
-          </View>
-        </View>
-        {/* Category badge */}
-        <View style={[s.vidCatBadge, { backgroundColor: video.color }]}>
-          <Text style={s.vidCatText}>{video.category}</Text>
+    <TouchableOpacity style={s.articleCard} onPress={() => onPress(topic)} activeOpacity={0.85}>
+      <View style={[s.articleIconWrap, { backgroundColor: topic.color + '1c' }]}>
+        <Text style={s.articleEmoji}>{topic.emoji}</Text>
+        <View style={[s.articleCatBadge, { backgroundColor: topic.color }]}>
+          <Text style={s.articleCatText}>{topic.category}</Text>
         </View>
       </View>
-      <Text style={s.videoTitle} numberOfLines={2}>{video.title}</Text>
-      <Text style={s.videoChannel}>{video.channel}</Text>
+      <Text style={s.articleTitle} numberOfLines={2}>{topic.title}</Text>
+      <Text style={s.articleMeta}>📖 {topic.readTime}</Text>
     </TouchableOpacity>
+  );
+}
+
+function ArticleModal({ topic, visible, onClose, s, theme }) {
+  if (!topic) return null;
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <View style={s.modalOverlay}>
+        <View style={s.articleModalCard}>
+          <View style={[s.articleModalHeader, { backgroundColor: topic.color + '1c' }]}>
+            <TouchableOpacity onPress={onClose} style={s.articleCloseBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+              <Text style={[s.articleCloseText, { color: topic.color }]}>✕</Text>
+            </TouchableOpacity>
+            <Text style={s.articleModalEmoji}>{topic.emoji}</Text>
+            <View style={[s.articleCatBadge, { backgroundColor: topic.color }]}>
+              <Text style={s.articleCatText}>{topic.category}</Text>
+            </View>
+            <Text style={s.articleModalTitle}>{topic.title}</Text>
+            <Text style={s.articleModalMeta}>📖 {topic.readTime}</Text>
+          </View>
+          <ScrollView style={s.articleModalBody} contentContainerStyle={{ padding: space.xl }}>
+            {topic.sections.map((sec) => (
+              <View key={sec.heading} style={s.articleSection}>
+                <Text style={[s.articleSectionHeading, { color: topic.color }]}>{sec.heading}</Text>
+                <Text style={s.articleSectionBody}>{sec.body}</Text>
+              </View>
+            ))}
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
   );
 }
 
@@ -90,6 +104,7 @@ export default function HomeScreen({ navigation }) {
   const [displayName, setDisplayName]         = useState('');
   const [cycleLength, setCycleLength]         = useState(CYCLE_LENGTH);
   const [periodLength, setPeriodLength]       = useState(PERIOD_LENGTH);
+  const [activeArticle, setActiveArticle]     = useState(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -165,13 +180,17 @@ export default function HomeScreen({ navigation }) {
 
   return (
     <FadeInView style={s.screen}>
-      <View style={[s.header, { backgroundColor: phase.color }]}>
+      <LinearGradient
+        colors={[phase.color, theme.surface]}
+        locations={[0, 1]}
+        style={s.header}
+      >
         <View style={s.headerTopRow}>
-          <Text style={s.greeting}>{getGreeting()}{displayName ? `, ${displayName}` : ''} 👋</Text>
+          <Text style={[s.greeting, { color: phase.textColor }]}>{getGreeting()}{displayName ? `, ${displayName}` : ''} 👋</Text>
           <BloomButton onPress={() => navigation.navigate('Chat')} />
         </View>
-        <Text style={s.headerSub}>Here's your cycle overview for today</Text>
-      </View>
+        <Text style={[s.headerSub, { color: phase.textColor, opacity: 0.85 }]}>Here's your cycle overview for today</Text>
+      </LinearGradient>
 
       <ScrollView contentContainerStyle={s.content}>
         {/* Main card */}
@@ -181,7 +200,7 @@ export default function HomeScreen({ navigation }) {
             <Text style={s.gsSub}>Follow these steps to unlock your cycle insights.</Text>
 
             <TouchableOpacity style={s.gsStep} onPress={openModal} activeOpacity={0.85}>
-              <View style={[s.gsStepNum, { backgroundColor: '#e75480' }]}>
+              <View style={[s.gsStepNum, { backgroundColor: theme.primary }]}>
                 <Text style={s.gsStepNumText}>1</Text>
               </View>
               <View style={s.gsStepBody}>
@@ -270,7 +289,7 @@ export default function HomeScreen({ navigation }) {
         {/* Quick actions */}
         <View style={s.actionsRow}>
           <TouchableOpacity style={[s.actionBtn, { backgroundColor: phase.color }]} onPress={() => navigation.navigate('Log')}>
-            <Text style={s.actionBtnText}>📝  Log Today</Text>
+            <Text style={[s.actionBtnText, { color: phase.textColor }]}>📝  Log Today</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[s.actionBtnOutline, { borderColor: phase.color }]} onPress={() => navigation.navigate('Calendar')}>
             <Text style={[s.actionBtnOutlineText, { color: phase.color }]}>📅  Calendar</Text>
@@ -311,15 +330,15 @@ export default function HomeScreen({ navigation }) {
         {/* ── Learn & Discover ── */}
         <View style={s.eduSectionHeader}>
           <Text style={s.eduSectionTitle}>Learn & Discover</Text>
-          <Text style={s.eduSectionSub}>Tap any card to watch on YouTube</Text>
+          <Text style={s.eduSectionSub}>Tap any card to read a quick guide</Text>
         </View>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={s.videoRow}
         >
-          {EDUCATION_VIDEOS.map(video => (
-            <VideoCard key={video.id} video={video} s={s} />
+          {EDUCATION_TOPICS.map(topic => (
+            <ArticleCard key={topic.id} topic={topic} onPress={setActiveArticle} s={s} />
           ))}
         </ScrollView>
 
@@ -353,7 +372,7 @@ export default function HomeScreen({ navigation }) {
               maxDate={today}
               onDayPress={(day) => setPickedDate(day.dateString)}
               markingType="simple"
-              markedDates={pickedDate ? { [pickedDate]: { selected: true, selectedColor: '#e75480' } } : {}}
+              markedDates={pickedDate ? { [pickedDate]: { selected: true, selectedColor: theme.primary } } : {}}
               theme={{
                 backgroundColor:     theme.card,
                 calendarBackground:  theme.card,
@@ -391,165 +410,169 @@ export default function HomeScreen({ navigation }) {
           </View>
         </View>
       </Modal>
+
+      <ArticleModal
+        topic={activeArticle}
+        visible={!!activeArticle}
+        onClose={() => setActiveArticle(null)}
+        s={s}
+        theme={theme}
+      />
     </FadeInView>
   );
 }
 
 const styles = (theme) => StyleSheet.create({
   screen: { flex: 1, backgroundColor: theme.surface },
-  header: { paddingHorizontal: 20, paddingTop: Platform.OS === 'android' ? 44 : 54, paddingBottom: 20 },
-  headerTopRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 4 },
-  greeting: { fontSize: 20, fontWeight: '700', color: '#fff', flex: 1 },
+  header: { paddingHorizontal: space.xl, paddingTop: Platform.OS === 'android' ? 44 : 54, paddingBottom: space.xxl },
+  headerTopRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: space.xs },
+  greeting: { ...type.h1, flex: 1 },
   chatBtn: { padding: 4, marginTop: -2 },
-  chatBtnText: { color: 'rgba(255,255,255,0.9)', fontSize: 26, letterSpacing: 2, fontWeight: '300' },
-  headerSub: { fontSize: 13, color: 'rgba(255,255,255,0.8)' },
-  content: { padding: 16, gap: 16 },
+  chatBtnText: { color: 'rgba(255,255,255,0.9)', fontSize: 26, letterSpacing: 2, fontFamily: fontFamily.regular },
+  headerSub: { ...type.small },
+  content: { padding: space.xl, gap: space.xl },
   mainCard: {
-    backgroundColor: theme.card, borderRadius: 20, padding: 20, flexDirection: 'row', alignItems: 'center',
-    ...Platform.select({ web: { boxShadow: '0 2px 10px rgba(0,0,0,0.08)' }, default: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 3 } }),
+    backgroundColor: theme.card, borderRadius: radius.xl, padding: space.xl, flexDirection: 'row', alignItems: 'center',
+    ...Platform.select(shadow),
   },
   mainCardSide: { flex: 1, alignItems: 'center' },
-  divider: { width: 1, height: 80, backgroundColor: theme.border, marginHorizontal: 16 },
-  cardLabel: { fontSize: 12, color: theme.muted, marginBottom: 4, fontWeight: '500' },
-  bigNum: { fontSize: 52, fontWeight: '800', lineHeight: 60 },
-  unit: { fontSize: 13, color: theme.muted },
-  nextDate: { fontSize: 11, color: theme.muted, marginTop: 4, textAlign: 'center' },
-  phasePill: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20, borderWidth: 1, marginTop: 6 },
+  divider: { width: 1, height: 80, backgroundColor: theme.border, marginHorizontal: space.lg },
+  cardLabel: { ...type.label, color: theme.muted, marginBottom: space.xs, textTransform: 'uppercase' },
+  bigNum: { fontFamily: fontFamily.extrabold, fontSize: 52, lineHeight: 58 },
+  unit: { ...type.small, color: theme.muted },
+  nextDate: { ...type.caption, color: theme.muted, marginTop: space.xs, textAlign: 'center' },
+  phasePill: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: space.sm + 2, paddingVertical: 4, borderRadius: radius.pill, borderWidth: 1, marginTop: space.xs + 2 },
   phaseDot: { width: 7, height: 7, borderRadius: 4 },
-  phasePillText: { fontSize: 11, fontWeight: '600' },
+  phasePillText: { ...type.caption, fontFamily: fontFamily.semibold },
   section: {
-    backgroundColor: theme.card, borderRadius: 20, padding: 18,
-    ...Platform.select({ web: { boxShadow: '0 2px 10px rgba(0,0,0,0.08)' }, default: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 3 } }),
+    backgroundColor: theme.card, borderRadius: radius.xl, padding: space.lg + 2,
+    ...Platform.select(shadow),
   },
-  sectionTitle: { fontSize: 15, fontWeight: '700', color: theme.text, marginBottom: 12 },
-  strip: { flexDirection: 'row', height: 16, borderRadius: 8, overflow: 'hidden', gap: 1, marginBottom: 4 },
+  sectionTitle: { ...type.h3, color: theme.text, marginBottom: space.md },
+  strip: { flexDirection: 'row', height: 16, borderRadius: radius.sm, overflow: 'hidden', gap: 1, marginBottom: space.xs },
   stripDay: { flex: 1 },
   stripDayCurrent: { borderWidth: 2, borderColor: theme.text, borderRadius: 2 },
-  stripLabels: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
-  stripLabel: { fontSize: 10, color: theme.muted },
-  legend: { gap: 8 },
-  legendRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  stripLabels: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: space.md },
+  stripLabel: { ...type.caption, color: theme.muted },
+  legend: { gap: space.sm },
+  legendRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
   legendDot: { width: 12, height: 12, borderRadius: 6 },
-  legendText: { flex: 1, fontSize: 13, color: theme.text },
-  legendDay: { fontSize: 11, color: theme.muted },
+  legendText: { ...type.body, flex: 1, color: theme.text },
+  legendDay: { ...type.caption, color: theme.muted },
   phaseInfo: {
-    backgroundColor: theme.card, borderRadius: 16, padding: 16, borderLeftWidth: 4,
-    ...Platform.select({ web: { boxShadow: '0 2px 10px rgba(0,0,0,0.06)' }, default: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 6, elevation: 2 } }),
+    backgroundColor: theme.card, borderRadius: radius.lg, padding: space.lg, borderLeftWidth: 4,
+    ...Platform.select(shadow),
   },
-  phaseInfoTitle: { fontSize: 14, fontWeight: '700', marginBottom: 6 },
-  phaseInfoText: { fontSize: 13, color: theme.subtext, lineHeight: 20 },
+  phaseInfoTitle: { ...type.h3, marginBottom: space.xs + 2 },
+  phaseInfoText: { ...type.body, color: theme.subtext, lineHeight: 21 },
   gettingStartedCard: {
-    backgroundColor: theme.card, borderRadius: 20, padding: 20,
-    ...Platform.select({ web: { boxShadow: '0 2px 10px rgba(0,0,0,0.08)' }, default: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 3 } }),
+    backgroundColor: theme.card, borderRadius: radius.xl, padding: space.xl,
+    ...Platform.select(shadow),
   },
-  gsWelcome:      { fontSize: 18, fontWeight: '800', color: theme.text, marginBottom: 4 },
-  gsSub:          { fontSize: 13, color: theme.muted, marginBottom: 20 },
+  gsWelcome:      { ...type.h2, color: theme.text, marginBottom: space.xs },
+  gsSub:          { ...type.small, color: theme.muted, marginBottom: space.xl },
   gsStep: {
-    flexDirection: 'row', alignItems: 'center', gap: 14,
-    paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: theme.border,
+    flexDirection: 'row', alignItems: 'center', gap: space.md + 2,
+    paddingVertical: space.md + 2, borderBottomWidth: 1, borderBottomColor: theme.border,
   },
   gsStepLocked:   { opacity: 0.45 },
   gsStepNum:      { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  gsStepNumText:  { color: '#fff', fontWeight: '700', fontSize: 14 },
+  gsStepNumText:  { color: '#fff', fontFamily: fontFamily.bold, fontSize: 14 },
   gsStepBody:     { flex: 1 },
-  gsStepTitle:    { fontSize: 14, fontWeight: '700', color: theme.text, marginBottom: 2 },
-  gsStepDesc:     { fontSize: 12, color: theme.muted, lineHeight: 18 },
-  gsStepArrow:    { fontSize: 22, color: '#e75480' },
-  actionsRow: { flexDirection: 'row', gap: 12 },
-  actionBtn: { flex: 1, paddingVertical: 14, borderRadius: 14, alignItems: 'center' },
-  actionBtnText: { color: '#fff', fontSize: 14, fontWeight: '600' },
-  actionBtnOutline: { flex: 1, paddingVertical: 14, borderRadius: 14, alignItems: 'center', borderWidth: 2, backgroundColor: theme.card },
-  actionBtnOutlineText: { fontSize: 14, fontWeight: '600' },
+  gsStepTitle:    { ...type.h3, color: theme.text, marginBottom: 2 },
+  gsStepDesc:     { ...type.small, color: theme.muted, lineHeight: 18 },
+  gsStepArrow:    { fontSize: 22, color: theme.primary },
+  actionsRow: { flexDirection: 'row', gap: space.md },
+  actionBtn: { flex: 1, paddingVertical: space.md + 2, borderRadius: radius.md, alignItems: 'center' },
+  actionBtnText: { ...type.bodyMedium, fontFamily: fontFamily.semibold, color: '#fff' },
+  actionBtnOutline: { flex: 1, paddingVertical: space.md + 2, borderRadius: radius.md, alignItems: 'center', borderWidth: 2, backgroundColor: theme.card },
+  actionBtnOutlineText: { ...type.bodyMedium, fontFamily: fontFamily.semibold },
   periodBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 14,
-    backgroundColor: theme.card, borderRadius: 16, padding: 16,
-    borderWidth: 1.5, borderColor: '#e75480' + '44',
-    marginBottom: 8,
-    ...Platform.select({ web: { boxShadow: '0 2px 8px rgba(231,84,128,0.08)' }, default: { shadowColor: '#e75480', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 6, elevation: 2 } }),
+    flexDirection: 'row', alignItems: 'center', gap: space.md + 2,
+    backgroundColor: theme.card, borderRadius: radius.lg, padding: space.lg,
+    borderWidth: 1.5, borderColor: theme.primary + '33',
+    marginBottom: space.sm,
+    ...Platform.select(shadow),
   },
   periodBtnEmoji:   { fontSize: 28 },
-  periodBtnLabel:   { fontSize: 14, fontWeight: '700', color: '#e75480' },
-  periodBtnSub:     { fontSize: 12, color: theme.muted, marginTop: 2 },
+  periodBtnLabel:   { ...type.h3, color: theme.primary },
+  periodBtnSub:     { ...type.small, color: theme.muted, marginTop: 2 },
   periodBtnChevron: { marginLeft: 'auto', fontSize: 22, color: theme.muted },
   endPeriodBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 14,
-    backgroundColor: theme.card, borderRadius: 16, padding: 16,
-    borderWidth: 1.5, borderColor: '#34d399' + '55',
-    marginBottom: 8,
-    ...Platform.select({ web: { boxShadow: '0 2px 8px rgba(52,211,153,0.08)' }, default: { shadowColor: '#34d399', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 6, elevation: 2 } }),
+    flexDirection: 'row', alignItems: 'center', gap: space.md + 2,
+    backgroundColor: theme.card, borderRadius: radius.lg, padding: space.lg,
+    borderWidth: 1.5, borderColor: '#34d399' + '44',
+    marginBottom: space.sm,
+    ...Platform.select(shadow),
   },
   endPeriodEmoji:   { fontSize: 28 },
-  endPeriodLabel:   { fontSize: 14, fontWeight: '700', color: '#34d399' },
-  endPeriodSub:     { fontSize: 12, color: theme.muted, marginTop: 2 },
+  endPeriodLabel:   { ...type.h3, color: '#34d399' },
+  endPeriodSub:     { ...type.small, color: theme.muted, marginTop: 2 },
   endPeriodChevron: { marginLeft: 'auto', fontSize: 22, color: theme.muted },
   periodEndedCard: {
-    flexDirection: 'row', alignItems: 'center', gap: 14,
-    backgroundColor: '#34d399' + '15', borderRadius: 16, padding: 16,
-    borderWidth: 1.5, borderColor: '#34d399' + '44',
-    marginBottom: 8,
+    flexDirection: 'row', alignItems: 'center', gap: space.md + 2,
+    backgroundColor: '#34d399' + '15', borderRadius: radius.lg, padding: space.lg,
+    borderWidth: 1.5, borderColor: '#34d399' + '33',
+    marginBottom: space.sm,
   },
   periodEndedEmoji: { fontSize: 24, color: '#34d399' },
-  periodEndedLabel: { fontSize: 14, fontWeight: '700', color: '#34d399' },
-  periodEndedSub:   { fontSize: 12, color: theme.muted, marginTop: 2 },
+  periodEndedLabel: { ...type.h3, color: '#34d399' },
+  periodEndedSub:   { ...type.small, color: theme.muted, marginTop: 2 },
   // ── Education section ──
-  eduSectionHeader: { marginTop: 4, marginBottom: 10 },
-  eduSectionTitle:  { fontSize: 16, fontWeight: '800', color: theme.text },
-  eduSectionSub:    { fontSize: 12, color: theme.muted, marginTop: 2 },
+  eduSectionHeader: { marginTop: space.xs, marginBottom: space.md - 2 },
+  eduSectionTitle:  { ...type.h2, color: theme.text },
+  eduSectionSub:    { ...type.small, color: theme.muted, marginTop: 2 },
 
-  videoRow: { paddingLeft: 2, paddingRight: 16, gap: 12, paddingBottom: 4 },
-  videoCard: {
+  videoRow: { paddingLeft: 2, paddingRight: space.lg, gap: space.md, paddingBottom: space.xs },
+  articleCard: {
     width: 190,
-    backgroundColor: theme.card, borderRadius: 16, overflow: 'hidden',
-    ...Platform.select({
-      web:     { boxShadow: '0 2px 10px rgba(0,0,0,0.08)' },
-      default: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 3 },
-    }),
+    backgroundColor: theme.card, borderRadius: radius.lg, overflow: 'hidden',
+    ...Platform.select(shadow),
   },
-  videoThumbWrap:     { width: 190, height: 107, position: 'relative' },
-  videoThumb:         { width: 190, height: 107 },
-  videoThumbFallback: { width: 190, height: 107, alignItems: 'center', justifyContent: 'center' },
-  videoThumbEmoji:    { fontSize: 40 },
-  playOverlay: {
-    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-    alignItems: 'center', justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.18)',
-  },
-  playBtn: {
-    width: 36, height: 36, borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.92)',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  playBtnIcon:  { fontSize: 14, color: '#111', marginLeft: 2 },
-  vidCatBadge:  {
+  articleIconWrap: { width: 190, height: 92, alignItems: 'center', justifyContent: 'center', position: 'relative' },
+  articleEmoji:    { fontSize: 36 },
+  articleCatBadge: {
     position: 'absolute', top: 8, left: 8,
     borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3,
   },
-  vidCatText:   { fontSize: 9, color: '#fff', fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.4 },
-  videoTitle:   { fontSize: 12, fontWeight: '700', color: theme.text, margin: 10, marginBottom: 4, lineHeight: 17 },
-  videoChannel: { fontSize: 11, color: theme.muted, marginHorizontal: 10, marginBottom: 10 },
+  articleCatText: { ...type.caption, fontFamily: fontFamily.bold, fontSize: 9, color: '#fff', textTransform: 'uppercase', letterSpacing: 0.4 },
+  articleTitle:   { ...type.h3, fontSize: 12, color: theme.text, marginHorizontal: space.sm + 2, marginTop: space.sm + 2, marginBottom: 4, lineHeight: 17 },
+  articleMeta:    { ...type.caption, color: theme.muted, marginHorizontal: space.sm + 2, marginBottom: space.sm + 2 },
 
-  factRow: { paddingLeft: 2, paddingRight: 16, gap: 12, paddingBottom: 4 },
-  factCard: {
-    width: 175, padding: 14, backgroundColor: theme.card, borderRadius: 16,
-    borderTopWidth: 3,
-    ...Platform.select({
-      web:     { boxShadow: '0 2px 8px rgba(0,0,0,0.06)' },
-      default: { shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 4, elevation: 2 },
-    }),
+  // ── Article reader modal ──
+  articleModalCard: {
+    backgroundColor: theme.card, borderRadius: radius.xl, width: '100%', maxWidth: 460, maxHeight: '82%', overflow: 'hidden',
   },
-  factEmoji: { fontSize: 26, marginBottom: 8 },
-  factTitle: { fontSize: 13, fontWeight: '700', color: theme.text, marginBottom: 6, lineHeight: 17 },
-  factBody:  { fontSize: 11, color: theme.subtext, lineHeight: 16 },
+  articleModalHeader: { padding: space.xl, paddingTop: space.lg },
+  articleCloseBtn:  { position: 'absolute', top: space.md, right: space.md, width: 28, height: 28, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.6)', alignItems: 'center', justifyContent: 'center' },
+  articleCloseText: { fontSize: 14, fontFamily: fontFamily.bold },
+  articleModalEmoji: { fontSize: 34, marginBottom: space.sm },
+  articleModalTitle: { ...type.h1, fontSize: 19, color: theme.text, marginTop: space.sm, marginBottom: 4 },
+  articleModalMeta:  { ...type.small, color: theme.muted },
+  articleModalBody:  { flexGrow: 0 },
+  articleSection:        { marginBottom: space.lg },
+  articleSectionHeading: { ...type.h3, marginBottom: space.xs },
+  articleSectionBody:    { ...type.body, color: theme.subtext, lineHeight: 21 },
 
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 },
-  modalCard: { backgroundColor: theme.card, borderRadius: 20, padding: 20, width: '100%', maxWidth: 420 },
-  modalTitle: { fontSize: 18, fontWeight: '700', color: theme.text, marginBottom: 4 },
-  modalSub:   { fontSize: 13, color: theme.muted, marginBottom: 16 },
-  modalPicked: { fontSize: 13, color: theme.primary, fontWeight: '600', textAlign: 'center', marginTop: 12 },
-  modalActions: { flexDirection: 'row', gap: 12, marginTop: 20 },
-  modalCancelBtn:  { flex: 1, paddingVertical: 14, borderRadius: 12, alignItems: 'center', backgroundColor: theme.optionBg },
-  modalCancelText: { fontSize: 15, fontWeight: '600', color: theme.subtext },
-  modalConfirmBtn: { flex: 1, paddingVertical: 14, borderRadius: 12, alignItems: 'center', backgroundColor: '#e75480' },
+  factRow: { paddingLeft: 2, paddingRight: space.lg, gap: space.md, paddingBottom: space.xs },
+  factCard: {
+    width: 175, padding: space.md + 2, backgroundColor: theme.card, borderRadius: radius.lg,
+    borderTopWidth: 3,
+    ...Platform.select(shadow),
+  },
+  factEmoji: { fontSize: 26, marginBottom: space.sm },
+  factTitle: { ...type.h3, fontSize: 13, color: theme.text, marginBottom: space.xs + 2, lineHeight: 17 },
+  factBody:  { ...type.caption, color: theme.subtext, lineHeight: 16 },
+
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: space.xl },
+  modalCard: { backgroundColor: theme.card, borderRadius: radius.xl, padding: space.xl, width: '100%', maxWidth: 420 },
+  modalTitle: { ...type.h2, color: theme.text, marginBottom: space.xs },
+  modalSub:   { ...type.small, color: theme.muted, marginBottom: space.lg },
+  modalPicked: { ...type.small, fontFamily: fontFamily.semibold, color: theme.primary, textAlign: 'center', marginTop: space.md },
+  modalActions: { flexDirection: 'row', gap: space.md, marginTop: space.xl },
+  modalCancelBtn:  { flex: 1, paddingVertical: space.md + 2, borderRadius: radius.md, alignItems: 'center', backgroundColor: theme.optionBg },
+  modalCancelText: { ...type.bodyMedium, fontFamily: fontFamily.semibold, color: theme.subtext },
+  modalConfirmBtn: { flex: 1, paddingVertical: space.md + 2, borderRadius: radius.md, alignItems: 'center', backgroundColor: theme.primary },
   modalConfirmDisabled: { backgroundColor: '#f2b8cc' },
-  modalConfirmText: { fontSize: 15, fontWeight: '600', color: '#fff' },
+  modalConfirmText: { ...type.bodyMedium, fontFamily: fontFamily.semibold, color: '#fff' },
 });

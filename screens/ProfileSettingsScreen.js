@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, TextInput, Switch, Modal, Linking, Platform, Alert } from 'react-native';
 import FadeInView from '../components/FadeInView';
+import BloomButton from '../components/BloomButton';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
 import { useTheme } from '../context/ThemeContext';
@@ -11,6 +12,8 @@ import {
   scheduleDailyLogReminder, cancelDailyLogReminder,
 } from '../utils/notifications';
 import { getNextPeriodDate, CYCLE_LENGTH } from '../utils/cycleUtils';
+import { shadow } from '../theme/spacing';
+import { fontFamily } from '../theme/typography';
 
 export default function ProfileSettingsScreen({ navigation }) {
   const { theme, isDark, toggleTheme } = useTheme();
@@ -118,9 +121,7 @@ export default function ProfileSettingsScreen({ navigation }) {
       <View style={s.header}>
         <View style={s.headerTopRow}>
           <Text style={s.headerTitle}>Profile & Settings</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('Chat')} style={s.chatBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-            <Text style={s.chatBtnText}>⋯</Text>
-          </TouchableOpacity>
+          <BloomButton onPress={() => navigation.navigate('Chat')} />
         </View>
       </View>
       <ScrollView contentContainerStyle={s.content}>
@@ -500,22 +501,20 @@ const styles = (theme) => StyleSheet.create({
   screen: { flex: 1, backgroundColor: theme.surface },
   header:       { paddingHorizontal: 20, paddingTop: Platform.OS === 'android' ? 40 : 50, paddingBottom: 14, backgroundColor: theme.card, borderBottomWidth: 1, borderBottomColor: theme.border },
   headerTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  headerTitle:  { fontSize: 20, fontWeight: '700', color: theme.text },
-  chatBtn:      { padding: 4 },
-  chatBtnText:  { color: theme.muted, fontSize: 24, letterSpacing: 2, fontWeight: '400' },
+  headerTitle:  { fontSize: 20, fontFamily: fontFamily.bold, color: theme.text },
   content: { padding: 20, gap: 20 },
   avatarSection: { alignItems: 'center', paddingVertical: 8 },
   avatar: { width: 80, height: 80, borderRadius: 40, backgroundColor: theme.primary, alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
-  avatarText: { fontSize: 28, fontWeight: '700', color: '#fff' },
-  avatarName: { fontSize: 18, fontWeight: '700', color: theme.text, marginBottom: 4 },
+  avatarText: { fontSize: 28, fontFamily: fontFamily.bold, color: '#fff' },
+  avatarName: { fontSize: 18, fontFamily: fontFamily.bold, color: theme.text, marginBottom: 4 },
   avatarEmail: { fontSize: 13, color: theme.muted },
   section: {
     backgroundColor: theme.card, borderRadius: 16, padding: 18,
-    ...Platform.select({ web: { boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }, default: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 6, elevation: 2 } }),
+    ...Platform.select(shadow),
   },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
-  sectionTitle: { fontSize: 15, fontWeight: '700', color: theme.text, marginBottom: 14 },
-  editBtn: { fontSize: 14, color: theme.primary, fontWeight: '600' },
+  sectionTitle: { fontSize: 15, fontFamily: fontFamily.bold, color: theme.text, marginBottom: 14 },
+  editBtn: { fontSize: 14, color: theme.primary, fontFamily: fontFamily.semibold },
   field: { borderBottomWidth: 1, borderBottomColor: theme.border, paddingVertical: 10, marginBottom: 4 },
   fieldLabel: { fontSize: 11, color: theme.muted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 },
   fieldInput: { fontSize: 15, color: theme.text },
@@ -526,21 +525,21 @@ const styles = (theme) => StyleSheet.create({
   unitToggle: { flexDirection: 'row', gap: 6 },
   unitBtn: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, borderWidth: 1.5, borderColor: theme.border, backgroundColor: theme.optionBg },
   unitBtnSelected: { backgroundColor: theme.primaryLight, borderColor: theme.primary },
-  unitBtnText: { fontSize: 12, color: theme.subtext, fontWeight: '500' },
-  unitBtnTextSelected: { color: theme.primary, fontWeight: '700' },
+  unitBtnText: { fontSize: 12, color: theme.subtext, fontFamily: fontFamily.medium },
+  unitBtnTextSelected: { color: theme.primary, fontFamily: fontFamily.bold },
   goalsRow:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  goalsSub:    { fontSize: 12, color: theme.muted, marginTop: 2, fontWeight: '400' },
+  goalsSub:    { fontSize: 12, color: theme.muted, marginTop: 2, fontFamily: fontFamily.regular },
   goalsChevron:{ fontSize: 22, color: theme.muted },
   toggleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: theme.border },
   toggleInfo: { flex: 1, marginRight: 12 },
-  toggleLabel: { fontSize: 14, color: theme.text, fontWeight: '500', marginBottom: 2 },
+  toggleLabel: { fontSize: 14, color: theme.text, fontFamily: fontFamily.medium, marginBottom: 2 },
   toggleSub: { fontSize: 12, color: theme.muted },
   themeRow: { flexDirection: 'row', gap: 12 },
   themeBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 12, borderRadius: 10, backgroundColor: theme.optionBg, borderWidth: 2, borderColor: 'transparent' },
   themeBtnSelected: { backgroundColor: theme.primaryLight, borderColor: theme.primary },
   themeIcon: { fontSize: 16 },
-  themeBtnText: { fontSize: 14, color: theme.subtext, fontWeight: '500' },
-  themeBtnTextSelected: { color: theme.primary, fontWeight: '700' },
+  themeBtnText: { fontSize: 14, color: theme.subtext, fontFamily: fontFamily.medium },
+  themeBtnTextSelected: { color: theme.primary, fontFamily: fontFamily.bold },
   aboutRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: theme.border },
   aboutLabel: { fontSize: 14, color: theme.text },
   aboutRight: { fontSize: 13, color: theme.muted },
@@ -548,19 +547,19 @@ const styles = (theme) => StyleSheet.create({
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
   modalCard: { backgroundColor: theme.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, maxHeight: '80%' },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-  modalTitle: { fontSize: 17, fontWeight: '700', color: theme.text },
+  modalTitle: { fontSize: 17, fontFamily: fontFamily.bold, color: theme.text },
   modalClose: { fontSize: 18, color: theme.muted, padding: 4 },
   faqItem: { marginBottom: 18 },
-  faqQ: { fontSize: 14, fontWeight: '700', color: theme.text, marginBottom: 4 },
+  faqQ: { fontSize: 14, fontFamily: fontFamily.bold, color: theme.text, marginBottom: 4 },
   faqA: { fontSize: 13, color: theme.subtext, lineHeight: 20 },
   policySection: { marginBottom: 18 },
-  policyHeading: { fontSize: 14, fontWeight: '700', color: theme.text, marginBottom: 4 },
+  policyHeading: { fontSize: 14, fontFamily: fontFamily.bold, color: theme.text, marginBottom: 4 },
   policyBody:    { fontSize: 13, color: theme.subtext, lineHeight: 20 },
   contactBody:   { fontSize: 14, color: theme.subtext, lineHeight: 21, marginBottom: 20 },
   contactEmailBtn:  { backgroundColor: theme.optionBg, borderRadius: 12, padding: 16, borderWidth: 1.5, borderColor: theme.primary, marginBottom: 12 },
   contactEmailLabel: { fontSize: 12, color: theme.muted, marginBottom: 4 },
-  contactEmailAddr:  { fontSize: 15, fontWeight: '700', color: theme.primary },
+  contactEmailAddr:  { fontSize: 15, fontFamily: fontFamily.bold, color: theme.primary },
   contactNote:  { fontSize: 12, color: theme.muted, textAlign: 'center' },
   logoutBtn: { backgroundColor: theme.card, borderRadius: 16, paddingVertical: 16, alignItems: 'center', borderWidth: 1.5, borderColor: '#ff4d4d' },
-  logoutText: { fontSize: 15, fontWeight: '700', color: '#ff4d4d' },
+  logoutText: { fontSize: 15, fontFamily: fontFamily.bold, color: '#ff4d4d' },
 });

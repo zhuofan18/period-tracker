@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, ScrollView, TextInput, Platform } from 'react-native';
 import { supabase } from '../lib/supabase';
 import { useTheme } from '../context/ThemeContext';
+import { fontFamily } from '../theme/typography';
 
 const QUESTIONS = [
   {
@@ -447,12 +448,12 @@ const styles = (theme) => StyleSheet.create({
   skipText: { fontSize: 14, color: theme.muted },
   content: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 24 },
   subtitle: { fontSize: 13, color: theme.muted, textAlign: 'center', marginBottom: 12, lineHeight: 18 },
-  question: { fontSize: 24, fontWeight: 'bold', color: theme.text, marginBottom: 28, lineHeight: 32 },
+  question: { fontSize: 24, fontFamily: fontFamily.bold, color: theme.text, marginBottom: 28, lineHeight: 32 },
   optionsList: { gap: 10 },
   option: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: theme.optionBg, borderRadius: 12, paddingHorizontal: 18, paddingVertical: 16, borderWidth: 2, borderColor: 'transparent' },
   optionSelected: { backgroundColor: theme.primaryLight, borderColor: theme.primary },
   optionText: { fontSize: 15, color: theme.text, flex: 1 },
-  optionTextSelected: { color: theme.primary, fontWeight: '600' },
+  optionTextSelected: { color: theme.primary, fontFamily: fontFamily.semibold },
   radio: { width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: theme.border, alignItems: 'center', justifyContent: 'center', marginLeft: 8 },
   radioSelected: { borderColor: theme.primary },
   radioDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: theme.primary },
@@ -461,13 +462,13 @@ const styles = (theme) => StyleSheet.create({
   unitToggle: { flexDirection: 'row', gap: 10, marginBottom: 16 },
   unitBtn: { flex: 1, paddingVertical: 12, borderRadius: 12, borderWidth: 2, borderColor: theme.border, backgroundColor: theme.optionBg, alignItems: 'center' },
   unitBtnSelected: { backgroundColor: theme.primaryLight, borderColor: theme.primary },
-  unitBtnText: { fontSize: 14, color: theme.subtext, fontWeight: '500' },
-  unitBtnTextSelected: { color: theme.primary, fontWeight: '700' },
+  unitBtnText: { fontSize: 14, color: theme.subtext, fontFamily: fontFamily.medium },
+  unitBtnTextSelected: { color: theme.primary, fontFamily: fontFamily.bold },
   ftInRow: { flexDirection: 'row', gap: 12 },
   ftInputWrap: { flex: 1 },
   ftLabel: { fontSize: 12, color: theme.muted, marginTop: 6, textAlign: 'center' },
   footer: { paddingHorizontal: 24, paddingVertical: 16, backgroundColor: theme.background },
   nextBtn: { backgroundColor: theme.primary, borderRadius: 30, paddingVertical: 16, alignItems: 'center' },
   nextBtnDisabled: { backgroundColor: '#f2b8cc' },
-  nextBtnText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  nextBtnText: { color: '#fff', fontSize: 16, fontFamily: fontFamily.semibold },
 });

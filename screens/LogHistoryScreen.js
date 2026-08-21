@@ -5,6 +5,8 @@ import { supabase } from '../lib/supabase';
 import { useTheme } from '../context/ThemeContext';
 import { SYMPTOM_EMOJI_MAP, MOOD_EMOJI_MAP } from '../components/SymptomMoodPicker';
 import { getPhaseForDay, PHASES, CYCLE_LENGTH, PERIOD_LENGTH } from '../utils/cycleUtils';
+import { shadow } from '../theme/spacing';
+import { fontFamily } from '../theme/typography';
 
 // Label → short display label for phase-specific keys
 const KEY_LABELS = {
@@ -92,7 +94,7 @@ export default function LogHistoryScreen() {
   if (loading) {
     return (
       <View style={[s.screen, s.center]}>
-        <ActivityIndicator size="large" color="#e75480" />
+        <ActivityIndicator size="large" color={theme.primary} />
       </View>
     );
   }
@@ -219,17 +221,17 @@ const styles = (theme) => StyleSheet.create({
   },
   backBtn:     { padding: 2 },
   backArrow:   { fontSize: 22, color: theme.text },
-  headerTitle: { flex: 1, fontSize: 20, fontWeight: '700', color: theme.text },
+  headerTitle: { flex: 1, fontSize: 20, fontFamily: fontFamily.bold, color: theme.text },
   headerCount: { fontSize: 13, color: theme.muted },
 
   empty:      { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32 },
   emptyEmoji: { fontSize: 48, marginBottom: 16 },
-  emptyTitle: { fontSize: 17, fontWeight: '700', color: theme.text, marginBottom: 8 },
+  emptyTitle: { fontSize: 17, fontFamily: fontFamily.bold, color: theme.text, marginBottom: 8 },
   emptySub:   { fontSize: 13, color: theme.muted, textAlign: 'center', lineHeight: 20 },
 
   content:     { padding: 16, paddingBottom: 32 },
   monthHeader: {
-    fontSize: 12, fontWeight: '700', color: theme.muted,
+    fontSize: 12, fontFamily: fontFamily.bold, color: theme.muted,
     textTransform: 'uppercase', letterSpacing: 0.9,
     marginTop: 24, marginBottom: 10, marginLeft: 4,
   },
@@ -237,15 +239,12 @@ const styles = (theme) => StyleSheet.create({
   card: {
     backgroundColor: theme.card, borderRadius: 16, padding: 14,
     marginBottom: 10, borderLeftWidth: 4,
-    ...Platform.select({
-      web:     { boxShadow: '0 2px 8px rgba(0,0,0,0.06)' },
-      default: { shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 4, elevation: 2 },
-    }),
+    ...Platform.select(shadow),
   },
   cardTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
-  cardDate: { fontSize: 14, fontWeight: '700', color: theme.text },
+  cardDate: { fontSize: 14, fontFamily: fontFamily.bold, color: theme.text },
   phaseBadge:     { borderRadius: 20, paddingHorizontal: 10, paddingVertical: 3 },
-  phaseBadgeText: { fontSize: 11, fontWeight: '700' },
+  phaseBadgeText: { fontSize: 11, fontFamily: fontFamily.bold },
 
   emptyLog: { fontSize: 12, color: theme.muted, fontStyle: 'italic', marginBottom: 8 },
 
@@ -256,11 +255,11 @@ const styles = (theme) => StyleSheet.create({
     paddingHorizontal: 9, paddingVertical: 5,
     borderWidth: 1, borderColor: theme.border,
   },
-  kvKey: { fontSize: 11, color: theme.muted, fontWeight: '600' },
-  kvVal: { fontSize: 12, color: theme.text, fontWeight: '700' },
+  kvKey: { fontSize: 11, color: theme.muted, fontFamily: fontFamily.semibold },
+  kvVal: { fontSize: 12, color: theme.text, fontFamily: fontFamily.bold },
 
   section:      { marginBottom: 8 },
-  sectionLabel: { fontSize: 11, fontWeight: '700', color: theme.muted, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 },
+  sectionLabel: { fontSize: 11, fontFamily: fontFamily.bold, color: theme.muted, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 },
   pillRow:      { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   pill: {
     flexDirection: 'row', alignItems: 'center', gap: 3,

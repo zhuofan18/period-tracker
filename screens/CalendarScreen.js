@@ -7,8 +7,10 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { supabase } from '../lib/supabase';
 import { useTheme } from '../context/ThemeContext';
 import { getCycleDay, getPhaseForDay, PHASES, CYCLE_LENGTH, PERIOD_LENGTH, addDays, getCurrentCycleStart, getPhaseDates } from '../utils/cycleUtils';
+import { shadow, radius } from '../theme/spacing';
+import { fontFamily } from '../theme/typography';
 
-function buildMarkedDates(lastPeriodStartStr, cycleLength, periodLength) {
+function buildMarkedDates(lastPeriodStartStr, cycleLength, periodLength, dayTextColor) {
   const currentStart = getCurrentCycleStart(lastPeriodStartStr, cycleLength);
   const marked = {};
 
@@ -23,8 +25,8 @@ function buildMarkedDates(lastPeriodStartStr, cycleLength, periodLength) {
       const nextKey = getPhaseForDay(dayNum + 1, periodLength);
       const phase   = PHASES[phaseKey];
       marked[dateStr] = {
-        color:       phase.color,
-        textColor:   phase.textColor,
+        color:       phase.color + '3D', // lightly tinted, not a solid fill
+        textColor:   dayTextColor,
         startingDay: phaseKey !== prevKey,
         endingDay:   phaseKey !== nextKey,
       };
@@ -33,8 +35,8 @@ function buildMarkedDates(lastPeriodStartStr, cycleLength, periodLength) {
 
   const predictedNext = addDays(currentStart, 3 * cycleLength);
   marked[predictedNext] = {
-    color:       PHASES.period.color + '99',
-    textColor:   '#fff',
+    color:       PHASES.period.color + '26', // fainter still — signals "predicted"
+    textColor:   dayTextColor,
     startingDay: true,
     endingDay:   true,
   };
@@ -88,10 +90,12 @@ export default function CalendarScreen() {
     }, [])
   );
 
-  const markedDates       = lastPeriodStart ? buildMarkedDates(lastPeriodStart, cycleLength, periodLength) : {};
+  const markedDates       = lastPeriodStart ? buildMarkedDates(lastPeriodStart, cycleLength, periodLength, theme.text) : {};
   const cycleDay          = lastPeriodStart ? getCycleDay(lastPeriodStart, cycleLength) : null;
   const currentCycleStart = lastPeriodStart ? getCurrentCycleStart(lastPeriodStart, cycleLength) : null;
   const phaseDates        = currentCycleStart ? getPhaseDates(currentCycleStart, cycleLength, periodLength) : null;
+  const currentPhaseKey   = cycleDay ? getPhaseForDay(cycleDay, periodLength) : null;
+  const currentPhase      = currentPhaseKey ? PHASES[currentPhaseKey] : null;
 
   const getSelectedInfo = (dateStr) => {
     if (!lastPeriodStart) return null;
@@ -122,28 +126,49 @@ export default function CalendarScreen() {
           <Text style={s.headerTitle}>My Cycle</Text>
           <BloomButton onPress={() => navigation.navigate('Chat')} />
         </View>
-        <Text style={s.headerSub}>{cycleDay ? `Day ${cycleDay} of ${cycleLength}` : 'No period logged yet'}</Text>
+        {currentPhase ? (
+          <View style={[s.headerPill, { backgroundColor: currentPhase.color + '22', borderColor: currentPhase.color }]}>
+            <View style={[s.headerPillDot, { backgroundColor: currentPhase.color }]} />
+            <Text style={[s.headerPillText, { color: currentPhase.color }]}>Day {cycleDay} of {cycleLength} · {currentPhase.label}</Text>
+          </View>
+        ) : (
+          <Text style={s.headerSub}>No period logged yet</Text>
+        )}
       </View>
 
       <ScrollView contentContainerStyle={s.content}>
-        <Calendar
-          current={today}
-          onDayPress={onDayPress}
-          markingType="period"
-          markedDates={markedDates}
-          theme={{
-            backgroundColor:        theme.card,
-            calendarBackground:     theme.card,
-            todayTextColor:         theme.primary,
-            arrowColor:             theme.primary,
-            monthTextColor:         theme.text,
-            textMonthFontWeight:    'bold',
-            textDayFontSize:        14,
-            dayTextColor:           theme.text,
-            textDisabledColor:      theme.muted,
-          }}
-          style={[s.calendar, { backgroundColor: theme.card }]}
-        />
+        <View style={s.calendarShadowWrap}>
+          <View style={s.calendarClip}>
+            <Calendar
+              current={today}
+              onDayPress={onDayPress}
+              markingType="period"
+              markedDates={markedDates}
+              theme={{
+                backgroundColor:            theme.card,
+                calendarBackground:         theme.card,
+                textSectionTitleColor:      theme.muted,
+                selectedDayBackgroundColor: theme.primary,
+                selectedDayTextColor:       '#fff',
+                todayTextColor:             theme.primary,
+                todayBackgroundColor:       theme.primaryLight,
+                dayTextColor:               theme.text,
+                textDisabledColor:          theme.border,
+                dotColor:                   theme.primary,
+                arrowColor:                 theme.primary,
+                disabledArrowColor:         theme.muted,
+                monthTextColor:             theme.text,
+                textDayFontFamily:          fontFamily.medium,
+                textMonthFontFamily:        fontFamily.extrabold,
+                textDayHeaderFontFamily:    fontFamily.semibold,
+                textDayFontSize:            14,
+                textMonthFontSize:          15,
+                textDayHeaderFontSize:      11,
+              }}
+              style={{ backgroundColor: theme.card }}
+            />
+          </View>
+        </View>
 
         {/* No period logged — prompt to get started */}
         {!lastPeriodStart && (
@@ -176,15 +201,15 @@ export default function CalendarScreen() {
         <View style={s.legend}>
           <Text style={s.legendTitle}>Cycle Phases</Text>
           {Object.entries(PHASES).map(([key, val]) => (
-            <View key={key} style={s.legendRow}>
+            <View key={key} style={[s.legendRow, { backgroundColor: val.color + '16' }]}>
               <View style={[s.legendDot, { backgroundColor: val.color }]} />
               <Text style={s.legendLabel}>{val.label}</Text>
-              <Text style={s.legendDay}>
+              <Text style={[s.legendDay, { color: val.color }]}>
                 {phaseDates ? phaseDates[key] : `Day ${val.day}`}
               </Text>
             </View>
           ))}
-          <View style={s.legendRow}>
+          <View style={[s.legendRow, { backgroundColor: theme.optionBg, borderStyle: 'dashed', borderWidth: 1, borderColor: theme.border }]}>
             <View style={[s.legendDot, { backgroundColor: PHASES.period.color, opacity: 0.4 }]} />
             <Text style={s.legendLabel}>Predicted Next Period</Text>
             {phaseDates && <Text style={s.legendDay}>{phaseDates.nextPeriod}</Text>}
@@ -205,14 +230,19 @@ const styles = (theme) => StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: theme.border,
   },
-  headerTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  headerTitle:  { fontSize: 20, fontWeight: '700', color: theme.text },
-  chatBtn:      { padding: 4 },
-  chatBtnText:  { color: theme.muted, fontSize: 24, letterSpacing: 2, fontWeight: '400' },
-  headerSub:    { fontSize: 13, color: theme.muted, marginTop: 4 },
+  headerTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
+  headerTitle:  { fontSize: 20, fontFamily: fontFamily.bold, color: theme.text },
+  headerSub:    { fontSize: 13, color: theme.muted },
+  headerPill:   { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 6, paddingHorizontal: 10, paddingVertical: 5, borderRadius: radius.pill, borderWidth: 1 },
+  headerPillDot: { width: 7, height: 7, borderRadius: 4 },
+  headerPillText: { fontSize: 12, fontFamily: fontFamily.semibold },
   content: { padding: 16, gap: 16, paddingBottom: 32 },
-  calendar: {
-    borderRadius: 16,
+  calendarShadowWrap: {
+    borderRadius: radius.xl,
+    ...Platform.select(shadow),
+  },
+  calendarClip: {
+    borderRadius: radius.xl,
     borderWidth: 1,
     borderColor: theme.border,
     overflow: 'hidden',
@@ -222,38 +252,32 @@ const styles = (theme) => StyleSheet.create({
     borderRadius: 14,
     padding: 16,
     borderLeftWidth: 4,
-    ...Platform.select({
-      web:     { boxShadow: '0 2px 8px rgba(0,0,0,0.06)' },
-      default: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 6, elevation: 2 },
-    }),
+    ...Platform.select(shadow),
   },
-  dayCardTitle: { fontSize: 15, fontWeight: '700', marginBottom: 2 },
+  dayCardTitle: { fontSize: 15, fontFamily: fontFamily.bold, marginBottom: 2 },
   dayCardDate:  { fontSize: 12, color: theme.muted, marginBottom: 8 },
   dayCardDesc:  { fontSize: 13, color: theme.subtext, lineHeight: 20 },
   tapHint: { alignItems: 'center', paddingVertical: 12 },
   tapHintText: { fontSize: 13, color: theme.muted },
   emptyCard: {
     backgroundColor: theme.card, borderRadius: 16, padding: 20, alignItems: 'center',
-    ...Platform.select({ web: { boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }, default: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 6, elevation: 2 } }),
+    ...Platform.select(shadow),
   },
   emptyEmoji: { fontSize: 40, marginBottom: 10 },
-  emptyTitle: { fontSize: 16, fontWeight: '700', color: theme.text, marginBottom: 6 },
+  emptyTitle: { fontSize: 16, fontFamily: fontFamily.bold, color: theme.text, marginBottom: 6 },
   emptySub:   { fontSize: 13, color: theme.muted, textAlign: 'center', lineHeight: 20, marginBottom: 16 },
-  emptyBtn:   { backgroundColor: '#e75480', borderRadius: 12, paddingVertical: 12, paddingHorizontal: 24 },
-  emptyBtnText: { color: '#fff', fontSize: 14, fontWeight: '600' },
+  emptyBtn:   { backgroundColor: theme.primary, borderRadius: 12, paddingVertical: 12, paddingHorizontal: 24 },
+  emptyBtnText: { color: '#fff', fontSize: 14, fontFamily: fontFamily.semibold },
   legend: {
     backgroundColor: theme.card,
-    borderRadius: 14,
+    borderRadius: radius.lg,
     padding: 16,
-    gap: 12,
-    ...Platform.select({
-      web:     { boxShadow: '0 2px 8px rgba(0,0,0,0.06)' },
-      default: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 6, elevation: 2 },
-    }),
+    gap: 8,
+    ...Platform.select(shadow),
   },
-  legendTitle: { fontSize: 14, fontWeight: '700', color: theme.text, marginBottom: 4 },
-  legendRow:   { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  legendDot:   { width: 14, height: 14, borderRadius: 7 },
-  legendLabel: { flex: 1, fontSize: 13, color: theme.text },
-  legendDay:   { fontSize: 12, color: theme.muted },
+  legendTitle: { fontSize: 14, fontFamily: fontFamily.bold, color: theme.text, marginBottom: 4 },
+  legendRow:   { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 9, paddingHorizontal: 10, borderRadius: radius.md },
+  legendDot:   { width: 12, height: 12, borderRadius: 6 },
+  legendLabel: { flex: 1, fontSize: 13, fontFamily: fontFamily.semibold, color: theme.text },
+  legendDay:   { fontSize: 12, fontFamily: fontFamily.medium, color: theme.muted },
 });

@@ -4,6 +4,8 @@ import {
   StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator, SafeAreaView,
 } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
+import { shadow } from '../theme/spacing';
+import { fontFamily } from '../theme/typography';
 
 const FUNCTION_URL   = 'https://znmgfnbrdbxiwjnvywdh.supabase.co/functions/v1/chat';
 const SUPABASE_ANON  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpubWdmbmJyZGJ4aXdqbnZ5d2RoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1NzUwNTksImV4cCI6MjA5ODE1MTA1OX0.GneTn6xcMAWVadRg_N3QOkqzqDm1D3VwghrfyFHhqMw';
@@ -181,11 +183,11 @@ const styles = (theme) => StyleSheet.create({
     backgroundColor: theme.primaryLight,
     alignItems: 'center', justifyContent: 'center',
   },
-  headerTitle:  { fontSize: 15, fontWeight: '700', color: theme.text },
+  headerTitle:  { fontSize: 15, fontFamily: fontFamily.bold, color: theme.text },
   headerSub:    { fontSize: 11, color: theme.muted },
   onlinePill:   { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#dcfce7', borderRadius: 20, paddingHorizontal: 8, paddingVertical: 4 },
   onlineDot:    { width: 6, height: 6, borderRadius: 3, backgroundColor: '#16a34a' },
-  onlineText:   { fontSize: 11, color: '#16a34a', fontWeight: '600' },
+  onlineText:   { fontSize: 11, color: '#16a34a', fontFamily: fontFamily.semibold },
 
   list: { padding: 16, gap: 12, paddingBottom: 8 },
 
@@ -197,13 +199,10 @@ const styles = (theme) => StyleSheet.create({
   avatarEmoji: { fontSize: 14 },
 
   bubble:        { maxWidth: '78%', borderRadius: 18, paddingHorizontal: 14, paddingVertical: 10 },
-  bubbleUser:    { backgroundColor: '#e75480', borderBottomRightRadius: 4 },
+  bubbleUser:    { backgroundColor: theme.primary, borderBottomRightRadius: 4 },
   bubbleAI:      {
     backgroundColor: theme.card, borderBottomLeftRadius: 4,
-    ...Platform.select({
-      web:     { boxShadow: '0 1px 4px rgba(0,0,0,0.08)' },
-      default: { shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.08, shadowRadius: 4, elevation: 1 },
-    }),
+    ...Platform.select(shadow),
   },
   bubbleText:     { fontSize: 14, lineHeight: 21 },
   bubbleTextUser: { color: '#fff' },
@@ -226,7 +225,7 @@ const styles = (theme) => StyleSheet.create({
     backgroundColor: theme.inputBg,
     maxHeight: 100,
   },
-  sendBtn:    { width: 40, height: 40, borderRadius: 20, backgroundColor: '#e75480', alignItems: 'center', justifyContent: 'center' },
+  sendBtn:    { width: 40, height: 40, borderRadius: 20, backgroundColor: theme.primary, alignItems: 'center', justifyContent: 'center' },
   sendBtnOff: { backgroundColor: theme.muted + '55' },
-  sendIcon:   { color: '#fff', fontSize: 18, fontWeight: '700' },
+  sendIcon:   { color: '#fff', fontSize: 18, fontFamily: fontFamily.bold },
 });

@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import { StyleSheet, Text, View, TextInput, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import { supabase } from '../lib/supabase';
 import { useTheme } from '../context/ThemeContext';
+import { fontFamily } from '../theme/typography';
 
 export default function CreateAccountScreen({ navigation }) {
   const { theme } = useTheme();
@@ -158,9 +159,9 @@ const styles = (theme) => StyleSheet.create({
   container:        { flexGrow: 1, paddingHorizontal: 24, paddingTop: Platform.OS === 'android' ? 40 : 56, paddingBottom: 40 },
   backBtn:          { marginBottom: 24 },
   backArrow:        { fontSize: 22, color: theme.text },
-  header:           { fontSize: 28, fontWeight: 'bold', color: theme.text, marginBottom: 8 },
+  header:           { fontSize: 28, fontFamily: fontFamily.bold, color: theme.text, marginBottom: 8 },
   sub:              { fontSize: 14, color: theme.muted, marginBottom: 32 },
-  label:            { fontSize: 13, fontWeight: '600', color: theme.subtext, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 },
+  label:            { fontSize: 13, fontFamily: fontFamily.semibold, color: theme.subtext, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 },
   input:            { borderWidth: 1, borderColor: theme.inputBorder, borderRadius: 10, paddingHorizontal: 16, paddingVertical: 13, fontSize: 15, color: theme.text, backgroundColor: theme.inputBg, marginBottom: 4 },
   inputError:       { borderColor: '#e74c3c' },
   passwordWrapper:  { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: theme.inputBorder, borderRadius: 10, paddingHorizontal: 16, marginBottom: 4, backgroundColor: theme.inputBg },
@@ -171,5 +172,5 @@ const styles = (theme) => StyleSheet.create({
   serverError:      { color: '#e74c3c', fontSize: 13, marginBottom: 12, marginTop: 4, textAlign: 'center' },
   createBtn:        { backgroundColor: theme.primary, borderRadius: 10, paddingVertical: 15, alignItems: 'center', marginTop: 12 },
   createBtnDisabled: { backgroundColor: '#f2b8cc' },
-  createBtnText:    { color: '#fff', fontSize: 16, fontWeight: '600' },
+  createBtnText:    { color: '#fff', fontSize: 16, fontFamily: fontFamily.semibold },
 });

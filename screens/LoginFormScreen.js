@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { supabase } from '../lib/supabase';
 import { useTheme } from '../context/ThemeContext';
+import { fontFamily } from '../theme/typography';
 
 // ─── Web Credential Management helpers ───────────────────────────────────────
 const credApiAvailable =
@@ -237,7 +238,7 @@ const styles = (theme) => StyleSheet.create({
   container:       { flexGrow: 1, paddingHorizontal: 24, paddingTop: Platform.OS === 'android' ? 40 : 56, paddingBottom: 40 },
   backBtn:         { marginBottom: 24 },
   backArrow:       { fontSize: 22, color: theme.text },
-  header:          { fontSize: 28, fontWeight: 'bold', color: theme.text, marginBottom: 6 },
+  header:          { fontSize: 28, fontFamily: fontFamily.bold, color: theme.text, marginBottom: 6 },
   sub:             { fontSize: 14, color: theme.muted, marginBottom: 24 },
 
   // Saved credential card
@@ -255,9 +256,9 @@ const styles = (theme) => StyleSheet.create({
     width: 44, height: 44, borderRadius: 22,
     backgroundColor: theme.primary, alignItems: 'center', justifyContent: 'center',
   },
-  savedAvatarText: { color: '#fff', fontSize: 18, fontWeight: '700' },
+  savedAvatarText: { color: '#fff', fontSize: 18, fontFamily: fontFamily.bold },
   savedInfo:       { flex: 1 },
-  savedName:       { fontSize: 15, fontWeight: '700', color: theme.text },
+  savedName:       { fontSize: 15, fontFamily: fontFamily.bold, color: theme.text },
   savedHint:       { fontSize: 12, color: theme.muted, marginTop: 2 },
   savedArrow:      { fontSize: 18, color: theme.primary },
 
@@ -265,7 +266,7 @@ const styles = (theme) => StyleSheet.create({
   dividerLine:  { flex: 1, height: 1, backgroundColor: theme.border },
   dividerText:  { fontSize: 11, color: theme.muted, textAlign: 'center', flexShrink: 1 },
 
-  label:           { fontSize: 13, fontWeight: '600', color: theme.subtext, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 },
+  label:           { fontSize: 13, fontFamily: fontFamily.semibold, color: theme.subtext, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 },
   input:           { borderWidth: 1, borderColor: theme.inputBorder, borderRadius: 10, paddingHorizontal: 16, paddingVertical: 13, fontSize: 15, color: theme.text, backgroundColor: theme.inputBg, marginBottom: 4 },
   inputError:      { borderColor: '#e74c3c' },
   passwordWrapper: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: theme.inputBorder, borderRadius: 10, paddingHorizontal: 16, marginBottom: 4, backgroundColor: theme.inputBg },
@@ -275,11 +276,11 @@ const styles = (theme) => StyleSheet.create({
   fieldError:      { color: '#e74c3c', fontSize: 12, marginBottom: 14, marginTop: 2 },
   serverError:     { color: '#e74c3c', fontSize: 13, marginBottom: 12, textAlign: 'center' },
   forgotRow:       { alignSelf: 'flex-end', marginBottom: 24, marginTop: 6 },
-  forgotText:      { fontSize: 13, color: theme.primary, fontWeight: '600' },
+  forgotText:      { fontSize: 13, color: theme.primary, fontFamily: fontFamily.semibold },
   loginBtn:        { backgroundColor: theme.primary, borderRadius: 10, paddingVertical: 15, alignItems: 'center', marginTop: 4 },
   loginBtnDisabled: { backgroundColor: '#f2b8cc' },
-  loginBtnText:    { color: '#fff', fontSize: 16, fontWeight: '600' },
+  loginBtnText:    { color: '#fff', fontSize: 16, fontFamily: fontFamily.semibold },
   signupRow:       { flexDirection: 'row', justifyContent: 'center', marginTop: 24 },
   signupPrompt:    { fontSize: 14, color: theme.subtext },
-  signupLink:      { fontSize: 14, color: theme.primary, fontWeight: '600' },
+  signupLink:      { fontSize: 14, color: theme.primary, fontFamily: fontFamily.semibold },
 });

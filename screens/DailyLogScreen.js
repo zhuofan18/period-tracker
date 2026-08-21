@@ -1,12 +1,16 @@
 import { useState, useEffect } from 'react';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, TextInput, Platform } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import FadeInView from '../components/FadeInView';
+import BloomButton from '../components/BloomButton';
 import SymptomMoodPicker, { SYMPTOM_EMOJI_MAP, MOOD_EMOJI_MAP } from '../components/SymptomMoodPicker';
 import SwipeUpBar from '../components/SwipeUpBar';
 import { supabase } from '../lib/supabase';
 import { useTheme } from '../context/ThemeContext';
 import { getPhaseForDay, PHASES, CYCLE_LENGTH, PERIOD_LENGTH } from '../utils/cycleUtils';
+import { shadow } from '../theme/spacing';
+import { fontFamily } from '../theme/typography';
 
 const PHASE_QUESTIONS = {
   period: {
@@ -133,7 +137,7 @@ export default function DailyLogScreen() {
   };
 
   const formattedDate = new Date(selectedDate).toLocaleDateString('en-GB', {
-    weekday: 'long', day: 'numeric', month: 'long',
+    weekday: 'short', day: 'numeric', month: 'short',
   });
 
   // Phase for the selected date (not necessarily today)
@@ -182,13 +186,14 @@ export default function DailyLogScreen() {
   };
 
   const saveBtnLabel = saved ? 'Saved ✓' : saving ? 'Saving...' : isToday ? "Save Today's Log" : 'Update Log';
+  const badgeBg = phase.textColor === '#fff' ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.08)';
 
   return (
     <FadeInView style={s.screen}>
-      <View style={[s.header, { backgroundColor: phase.color }]}>
+      <LinearGradient colors={[phase.color, theme.surface]} locations={[0, 1]} style={s.header}>
         {/* Top row: title + history + chat button */}
         <View style={s.headerTopRow}>
-          <Text style={s.headerTitle}>Daily Log</Text>
+          <Text style={[s.headerTitle, { color: phase.textColor }]}>Daily Log</Text>
           <View style={s.headerActions}>
             <TouchableOpacity
               onPress={() => navigation.navigate('LogHistory')}
@@ -197,24 +202,18 @@ export default function DailyLogScreen() {
             >
               <Text style={s.historyBtnText}>📋</Text>
             </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => navigation.navigate('Chat')}
-              style={s.chatBtn}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            >
-              <Text style={s.chatBtnText}>⋯</Text>
-            </TouchableOpacity>
+            <BloomButton onPress={() => navigation.navigate('Chat')} />
           </View>
         </View>
 
         {/* Date navigation */}
         <View style={s.dateNav}>
           <TouchableOpacity onPress={() => navigateDay(-1)} style={s.dateArrow} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <Text style={s.dateArrowText}>‹</Text>
+            <Text style={[s.dateArrowText, { color: phase.textColor }]}>‹</Text>
           </TouchableOpacity>
           <View style={s.dateCenter}>
-            <Text style={s.dateText}>{formattedDate}</Text>
-            {isToday && <View style={s.todayBadge}><Text style={s.todayBadgeText}>Today</Text></View>}
+            <Text style={[s.dateText, { color: phase.textColor }]}>{formattedDate}</Text>
+            {isToday && <View style={[s.todayBadge, { backgroundColor: badgeBg }]}><Text style={[s.todayBadgeText, { color: phase.textColor }]}>Today</Text></View>}
           </View>
           <TouchableOpacity
             onPress={() => navigateDay(1)}
@@ -222,15 +221,15 @@ export default function DailyLogScreen() {
             disabled={isToday}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <Text style={[s.dateArrowText, isToday && s.dateArrowDisabled]}>›</Text>
+            <Text style={[s.dateArrowText, { color: phase.textColor }, isToday && s.dateArrowDisabled]}>›</Text>
           </TouchableOpacity>
         </View>
 
         {/* Phase badge */}
-        <View style={s.phaseBadge}>
-          <Text style={s.phaseBadgeText}>{cycleDay ? `Day ${cycleDay} · ` : ''}{phase.label}</Text>
+        <View style={[s.phaseBadge, { backgroundColor: badgeBg }]}>
+          <Text style={[s.phaseBadgeText, { color: phase.textColor }]}>{cycleDay ? `Day ${cycleDay} · ` : ''}{phase.label}</Text>
         </View>
-      </View>
+      </LinearGradient>
 
       <ScrollView contentContainerStyle={s.content}>
         {!lastPeriodStart && (
@@ -380,61 +379,59 @@ export default function DailyLogScreen() {
 
 const styles = (theme) => StyleSheet.create({
   screen:      { flex: 1, backgroundColor: theme.surface },
-  header:      { paddingHorizontal: 20, paddingTop: Platform.OS === 'android' ? 44 : 54, paddingBottom: 16 },
-  headerTopRow:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
-  headerTitle:   { fontSize: 22, fontWeight: '800', color: '#fff' },
+  header:      { paddingHorizontal: 20, paddingTop: Platform.OS === 'android' ? 40 : 50, paddingBottom: 12 },
+  headerTopRow:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
+  headerTitle:   { fontSize: 20, fontFamily: fontFamily.extrabold },
   headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   historyBtn:    { padding: 4 },
   historyBtnText:{ fontSize: 20 },
-  chatBtn:       { padding: 4 },
-  chatBtnText:   { color: 'rgba(255,255,255,0.9)', fontSize: 26, letterSpacing: 2, fontWeight: '300' },
 
-  dateNav:         { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
-  dateArrow:       { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
-  dateArrowText:   { color: '#fff', fontSize: 26, fontWeight: '300' },
+  dateNav:         { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
+  dateArrow:       { width: 26, height: 26, alignItems: 'center', justifyContent: 'center' },
+  dateArrowText:   { fontSize: 20, fontFamily: fontFamily.regular },
   dateArrowDisabled: { opacity: 0.3 },
-  dateCenter:      { flex: 1, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 8 },
-  dateText:        { color: '#fff', fontSize: 13, fontWeight: '600' },
-  todayBadge:      { backgroundColor: 'rgba(255,255,255,0.25)', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2 },
-  todayBadgeText:  { color: '#fff', fontSize: 11, fontWeight: '600' },
+  dateCenter:      { flex: 1, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 6 },
+  dateText:        { fontSize: 12, fontFamily: fontFamily.semibold },
+  todayBadge:      { borderRadius: 10, paddingHorizontal: 7, paddingVertical: 2 },
+  todayBadgeText:  { fontSize: 10, fontFamily: fontFamily.semibold },
 
-  phaseBadge:     { alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.25)' },
-  phaseBadgeText: { color: '#fff', fontSize: 12, fontWeight: '600' },
+  phaseBadge:     { alignSelf: 'flex-start', paddingHorizontal: 11, paddingVertical: 4, borderRadius: 20 },
+  phaseBadgeText: { fontSize: 11, fontFamily: fontFamily.semibold },
 
   content:    { padding: 16, gap: 16, paddingBottom: 32 },
   noPeriodBanner: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
     backgroundColor: theme.card, borderRadius: 14, padding: 14,
-    borderWidth: 1, borderColor: '#e75480' + '44', marginBottom: 4,
+    borderWidth: 1, borderColor: theme.primary + '44', marginBottom: 4,
   },
   noPeriodBannerIcon:  { fontSize: 22 },
   noPeriodBannerBody:  { flex: 1 },
-  noPeriodBannerTitle: { fontSize: 14, fontWeight: '700', color: theme.text, marginBottom: 2 },
+  noPeriodBannerTitle: { fontSize: 14, fontFamily: fontFamily.bold, color: theme.text, marginBottom: 2 },
   noPeriodBannerSub:   { fontSize: 12, color: theme.muted },
-  noPeriodBannerArrow: { fontSize: 20, color: '#e75480' },
+  noPeriodBannerArrow: { fontSize: 20, color: theme.primary },
   intro:      { fontSize: 15, color: theme.subtext, lineHeight: 22 },
   card: {
     backgroundColor: theme.card, borderRadius: 16, padding: 16,
-    ...Platform.select({ web: { boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }, default: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 6, elevation: 2 } }),
+    ...Platform.select(shadow),
   },
-  cardTitle:        { fontSize: 15, fontWeight: '700', color: theme.text, marginBottom: 4 },
+  cardTitle:        { fontSize: 15, fontFamily: fontFamily.bold, color: theme.text, marginBottom: 4 },
   cardSub:          { fontSize: 12, color: theme.muted, marginBottom: 12 },
   optionsList:      { gap: 8, marginTop: 8 },
   optionBtn:        { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: theme.optionBg, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, borderWidth: 2, borderColor: 'transparent' },
   optionBtnSelected: { backgroundColor: theme.primaryLight, borderColor: theme.primary },
   optionText:        { fontSize: 14, color: theme.text, flex: 1 },
-  optionTextSelected: { color: theme.primary, fontWeight: '600' },
+  optionTextSelected: { color: theme.primary, fontFamily: fontFamily.semibold },
   checkBox:          { width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: theme.border, alignItems: 'center', justifyContent: 'center' },
   checkBoxSelected:  { backgroundColor: theme.primary, borderColor: theme.primary },
-  checkMark:         { color: '#fff', fontSize: 12, fontWeight: '700' },
+  checkMark:         { color: '#fff', fontSize: 12, fontFamily: fontFamily.bold },
   notesInput: { borderWidth: 1, borderColor: theme.border, borderRadius: 10, padding: 12, fontSize: 14, color: theme.text, minHeight: 120, marginTop: 8, backgroundColor: theme.inputBg },
   saveBtn:    { borderRadius: 14, paddingVertical: 16, alignItems: 'center', marginBottom: 8 },
-  saveBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  saveBtnText: { color: '#fff', fontSize: 16, fontFamily: fontFamily.bold },
 
   // ── Picker card ──
   pickerCardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
-  pickerAddBtn:     { borderWidth: 1.5, borderColor: '#e75480', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 4 },
-  pickerAddBtnText: { fontSize: 13, color: '#e75480', fontWeight: '600' },
+  pickerAddBtn:     { borderWidth: 1.5, borderColor: theme.primary, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 4 },
+  pickerAddBtnText: { fontSize: 13, color: theme.primary, fontFamily: fontFamily.semibold },
   pickerEmpty:      { fontSize: 13, color: theme.muted, fontStyle: 'italic' },
   pillWrap:  { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   pill: {

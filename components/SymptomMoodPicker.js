@@ -4,6 +4,7 @@ import {
   ScrollView, StyleSheet, Platform,
 } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
+import { fontFamily } from '../theme/typography';
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
@@ -289,9 +290,9 @@ const styles = (theme) => StyleSheet.create({
     backgroundColor: theme.card,
     borderBottomWidth: 1, borderBottomColor: theme.border,
   },
-  title:      { fontSize: 16, fontWeight: '700', color: theme.text },
+  title:      { fontSize: 16, fontFamily: fontFamily.bold, color: theme.text },
   cancelText: { fontSize: 15, color: theme.muted, minWidth: 60 },
-  doneText:   { fontSize: 15, color: PINK, fontWeight: '700', minWidth: 60, textAlign: 'right' },
+  doneText:   { fontSize: 15, color: PINK, fontFamily: fontFamily.bold, minWidth: 60, textAlign: 'right' },
 
   searchBar: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
@@ -308,11 +309,11 @@ const styles = (theme) => StyleSheet.create({
     paddingHorizontal: 16, paddingBottom: 4,
   },
   selectionCount: { fontSize: 13, color: theme.muted },
-  clearAll:       { fontSize: 13, color: PINK, fontWeight: '600' },
+  clearAll:       { fontSize: 13, color: PINK, fontFamily: fontFamily.semibold },
 
   scrollContent: { padding: 12, paddingBottom: 110 },
   categoryTitle: {
-    fontSize: 13, fontWeight: '700', color: theme.subtext,
+    fontSize: 13, fontFamily: fontFamily.bold, color: theme.subtext,
     textTransform: 'uppercase', letterSpacing: 0.6,
     marginTop: 14, marginBottom: 10, marginLeft: 2,
   },
@@ -331,10 +332,10 @@ const styles = (theme) => StyleSheet.create({
     width: 15, height: 15, borderRadius: 8,
     backgroundColor: PINK, alignItems: 'center', justifyContent: 'center',
   },
-  checkText:       { color: '#fff', fontSize: 8, fontWeight: '800' },
+  checkText:       { color: '#fff', fontSize: 8, fontFamily: fontFamily.extrabold },
   itemEmoji:       { fontSize: 26, marginBottom: 5 },
   itemLabel:       { fontSize: 10, color: theme.subtext, textAlign: 'center', lineHeight: 13 },
-  itemLabelActive: { color: PINK, fontWeight: '600' },
+  itemLabelActive: { color: PINK, fontFamily: fontFamily.semibold },
 
   footer: {
     position: 'absolute', bottom: 0, left: 0, right: 0,
@@ -343,5 +344,5 @@ const styles = (theme) => StyleSheet.create({
     borderTopWidth: 1, borderTopColor: theme.border,
   },
   saveBtn:     { backgroundColor: PINK, borderRadius: 14, paddingVertical: 15, alignItems: 'center' },
-  saveBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  saveBtnText: { color: '#fff', fontSize: 16, fontFamily: fontFamily.bold },
 });

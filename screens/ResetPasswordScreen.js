@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { StyleSheet, Text, View, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import { supabase } from '../lib/supabase';
 import { useTheme } from '../context/ThemeContext';
+import { fontFamily } from '../theme/typography';
 
 export default function ResetPasswordScreen({ navigation, route }) {
   const { theme } = useTheme();
@@ -83,10 +84,10 @@ const styles = (theme) => StyleSheet.create({
   container: { flex: 1, paddingHorizontal: 24, paddingTop: Platform.OS === 'android' ? 40 : 56 },
   backBtn: { marginBottom: 24 },
   backArrow: { fontSize: 22, color: theme.text },
-  header: { fontSize: 28, fontWeight: 'bold', color: theme.text, marginBottom: 8 },
+  header: { fontSize: 28, fontFamily: fontFamily.bold, color: theme.text, marginBottom: 8 },
   sub: { fontSize: 14, color: theme.muted, marginBottom: 32, lineHeight: 21 },
-  emailHighlight: { color: theme.primary, fontWeight: '600' },
-  label: { fontSize: 13, fontWeight: '600', color: theme.subtext, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 },
+  emailHighlight: { color: theme.primary, fontFamily: fontFamily.semibold },
+  label: { fontSize: 13, fontFamily: fontFamily.semibold, color: theme.subtext, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 },
   input: { borderWidth: 1, borderColor: theme.inputBorder, borderRadius: 10, paddingHorizontal: 16, paddingVertical: 13, fontSize: 15, color: theme.text, backgroundColor: theme.inputBg, marginBottom: 20 },
   passwordWrapper: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: theme.inputBorder, borderRadius: 10, paddingHorizontal: 16, marginBottom: 20, backgroundColor: theme.inputBg },
   passwordInput: { flex: 1, paddingVertical: 13, fontSize: 15, color: theme.text },
@@ -97,11 +98,11 @@ const styles = (theme) => StyleSheet.create({
   errorText: { color: '#e74c3c', fontSize: 13, marginBottom: 12 },
   submitBtn: { backgroundColor: theme.primary, borderRadius: 10, paddingVertical: 15, alignItems: 'center', marginTop: 4 },
   submitBtnDisabled: { backgroundColor: '#f2b8cc' },
-  submitBtnText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  submitBtnText: { color: '#fff', fontSize: 16, fontFamily: fontFamily.semibold },
   successContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 },
   successIcon: { fontSize: 64, marginBottom: 24 },
-  successTitle: { fontSize: 24, fontWeight: 'bold', color: theme.text, marginBottom: 12 },
+  successTitle: { fontSize: 24, fontFamily: fontFamily.bold, color: theme.text, marginBottom: 12 },
   successSub: { fontSize: 15, color: theme.subtext, textAlign: 'center', lineHeight: 22, marginBottom: 36 },
   loginBtn: { backgroundColor: theme.primary, borderRadius: 10, paddingVertical: 15, paddingHorizontal: 48, alignItems: 'center' },
-  loginBtnText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  loginBtnText: { color: '#fff', fontSize: 16, fontFamily: fontFamily.semibold },
 });

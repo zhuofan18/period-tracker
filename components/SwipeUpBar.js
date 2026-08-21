@@ -1,5 +1,6 @@
 import { useRef, useEffect } from 'react';
 import { View, Text, Animated, PanResponder, StyleSheet, Platform } from 'react-native';
+import { fontFamily } from '../theme/typography';
 
 const SWIPE_DIST = 55;   // px upward to trigger
 const SWIPE_VEL  = 0.35; // velocity threshold (negative = up)
@@ -69,10 +70,12 @@ export default function SwipeUpBar({
       {...panResponder.panHandlers}
     >
       <View style={[s.pill, { backgroundColor: color }]} />
-      <Animated.Text style={[s.arrow, { color, transform: [{ scale: arrowScale }] }]}>
-        ↑
-      </Animated.Text>
-      <Text style={[s.label, { color }]}>{label}</Text>
+      <View style={s.row}>
+        <Animated.Text style={[s.arrow, { color, transform: [{ scale: arrowScale }] }]}>
+          ↑
+        </Animated.Text>
+        <Text style={[s.label, { color }]}>{label}</Text>
+      </View>
     </Animated.View>
   );
 }
@@ -81,13 +84,13 @@ const s = StyleSheet.create({
   wrap: {
     alignItems: 'center',
     paddingTop: 6,
-    paddingBottom: Platform.OS === 'ios' ? 30 : 14,
-    gap: 2,
+    paddingBottom: Platform.OS === 'ios' ? 18 : 10,
   },
-  pill:  { width: 38, height: 4, borderRadius: 2, opacity: 0.35, marginBottom: 6 },
-  arrow: { fontSize: 20, fontWeight: '700', lineHeight: 26 },
+  pill: { width: 32, height: 3, borderRadius: 1.5, opacity: 0.3, marginBottom: 5 },
+  row:  { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  arrow: { fontSize: 14, fontFamily: fontFamily.bold, lineHeight: 16 },
   label: {
-    fontSize: 11, fontWeight: '700', opacity: 0.75,
+    fontSize: 10, fontFamily: fontFamily.bold, opacity: 0.75,
     letterSpacing: 0.5, textTransform: 'uppercase',
   },
 });

@@ -36,12 +36,14 @@ export function getPhaseDates(cycleStart, cycleLength, periodLength) {
   };
 }
 
+// A single cohesive family — same soft, muted saturation band across every
+// hue so the phases read as one palette instead of five unrelated colors.
 export const PHASES = {
   period:     { label: 'Menstrual Phase',  color: '#e75480', textColor: '#fff',    day: '1–5'   },
-  follicular: { label: 'Follicular Phase', color: '#fbbf24', textColor: '#78350f', day: '6–13'  },
-  fertile:    { label: 'Fertile Window',   color: '#86efac', textColor: '#14532d', day: '10–17' },
-  ovulation:  { label: 'Ovulation',        color: '#fb923c', textColor: '#fff',    day: '14'    },
-  luteal:     { label: 'Luteal Phase',     color: '#c084fc', textColor: '#fff',    day: '15–28' },
+  follicular: { label: 'Follicular Phase', color: '#efbb5e', textColor: '#5a3b0a', day: '6–13'  },
+  fertile:    { label: 'Fertile Window',   color: '#6fc498', textColor: '#0f3d24', day: '10–17' },
+  ovulation:  { label: 'Ovulation',        color: '#e67f56', textColor: '#fff',    day: '14'    },
+  luteal:     { label: 'Luteal Phase',     color: '#a98ae0', textColor: '#fff',    day: '15–28' },
 };
 
 export function getCycleDay(lastPeriodStart, cycleLength = CYCLE_LENGTH) {

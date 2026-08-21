@@ -5,11 +5,17 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Text, View } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
+import { useFonts, Manrope_400Regular, Manrope_500Medium, Manrope_600SemiBold, Manrope_700Bold, Manrope_800ExtraBold } from '@expo-google-fonts/manrope';
 import SplashView from './components/SplashView';
 import { supabase } from './lib/supabase';
 
 // Keep the native splash visible until we call hideAsync()
 SplashScreen.preventAutoHideAsync();
+
+// Apply Manrope as the app-wide default so every screen picks it up
+// without needing a fontFamily on each individual Text style.
+Text.defaultProps = Text.defaultProps || {};
+Text.defaultProps.style = [{ fontFamily: 'Manrope_500Medium' }, Text.defaultProps.style];
 
 const navigationRef = createNavigationContainerRef();
 
@@ -74,8 +80,16 @@ function AppNavigator() {
   const { theme } = useTheme();
   const [initialRoute, setInitialRoute] = useState(null);
   const [showSplash, setShowSplash]     = useState(true);
+  const [fontsLoaded] = useFonts({
+    Manrope_400Regular,
+    Manrope_500Medium,
+    Manrope_600SemiBold,
+    Manrope_700Bold,
+    Manrope_800ExtraBold,
+  });
 
   useEffect(() => {
+    if (!fontsLoaded) return;
     supabase.auth.getSession().then(({ data: { session } }) => {
       setInitialRoute(session ? 'MainApp' : 'Login');
       // Hide native splash, then fade out our React splash
@@ -96,7 +110,7 @@ function AppNavigator() {
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [fontsLoaded]);
 
   if (!initialRoute) {
     return showSplash ? (

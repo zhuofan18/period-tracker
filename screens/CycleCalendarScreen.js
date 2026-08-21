@@ -12,6 +12,7 @@ import {
 import { Calendar } from 'react-native-calendars';
 import { supabase } from '../lib/supabase';
 import { useTheme } from '../context/ThemeContext';
+import { fontFamily } from '../theme/typography';
 
 const CYCLE_LENGTH = 28;
 const PERIOD_LENGTH = 5;
@@ -131,9 +132,9 @@ export default function CycleCalendarScreen({ navigation }) {
           theme={{
             backgroundColor: theme.card,
             calendarBackground: theme.card,
-            todayTextColor: '#e75480',
-            selectedDayBackgroundColor: '#e75480',
-            arrowColor: '#e75480',
+            todayTextColor: theme.primary,
+            selectedDayBackgroundColor: theme.primary,
+            arrowColor: theme.primary,
             monthTextColor: theme.text,
             textMonthFontWeight: 'bold',
             textDayFontSize: 14,
@@ -257,9 +258,9 @@ const styles = (theme) => StyleSheet.create({
   },
   backBtn: { padding: 4 },
   backArrow: { fontSize: 22, color: theme.text },
-  headerTitle: { fontSize: 18, fontWeight: '700', color: theme.text },
+  headerTitle: { fontSize: 18, fontFamily: fontFamily.bold, color: theme.text },
   content: { paddingHorizontal: 20, paddingBottom: 32 },
-  prompt: { fontSize: 22, fontWeight: 'bold', color: theme.text, marginBottom: 4 },
+  prompt: { fontSize: 22, fontFamily: fontFamily.bold, color: theme.text, marginBottom: 4 },
   sub: { fontSize: 13, color: theme.muted, marginBottom: 16 },
   calendar: {
     borderRadius: 16,
@@ -277,7 +278,7 @@ const styles = (theme) => StyleSheet.create({
   legendRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   legendDot: { width: 14, height: 14, borderRadius: 7 },
   legendLabel: { fontSize: 14, color: theme.text },
-  sectionLabel: { fontSize: 15, fontWeight: '600', color: theme.text, marginTop: 24, marginBottom: 10 },
+  sectionLabel: { fontSize: 15, fontFamily: fontFamily.semibold, color: theme.text, marginTop: 24, marginBottom: 10 },
   flowRow: { flexDirection: 'row', gap: 10 },
   flowBtn: {
     flex: 1,
@@ -288,9 +289,9 @@ const styles = (theme) => StyleSheet.create({
     backgroundColor: theme.optionBg,
     alignItems: 'center',
   },
-  flowBtnSelected: { backgroundColor: theme.primaryLight, borderColor: '#e75480' },
-  flowBtnText: { fontSize: 14, color: theme.subtext, fontWeight: '500' },
-  flowBtnTextSelected: { color: '#e75480', fontWeight: '700' },
+  flowBtnSelected: { backgroundColor: theme.primaryLight, borderColor: theme.primary },
+  flowBtnText: { fontSize: 14, color: theme.subtext, fontFamily: fontFamily.medium },
+  flowBtnTextSelected: { color: theme.primary, fontFamily: fontFamily.bold },
   symptomsInput: {
     borderWidth: 1,
     borderColor: theme.inputBorder,
@@ -310,11 +311,11 @@ const styles = (theme) => StyleSheet.create({
     borderWidth: 2,
     borderColor: 'transparent',
   },
-  moodChipSelected: { backgroundColor: theme.primaryLight, borderColor: '#e75480' },
+  moodChipSelected: { backgroundColor: theme.primaryLight, borderColor: theme.primary },
   moodChipText: { fontSize: 13, color: theme.subtext },
-  moodChipTextSelected: { color: '#e75480', fontWeight: '600' },
+  moodChipTextSelected: { color: theme.primary, fontFamily: fontFamily.semibold },
   footer: { paddingHorizontal: 24, paddingVertical: 16, backgroundColor: theme.background },
-  continueBtn: { backgroundColor: '#e75480', borderRadius: 30, paddingVertical: 16, alignItems: 'center' },
+  continueBtn: { backgroundColor: theme.primary, borderRadius: 30, paddingVertical: 16, alignItems: 'center' },
   continueBtnDisabled: { backgroundColor: '#f2b8cc' },
-  continueBtnText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  continueBtnText: { color: '#fff', fontSize: 16, fontFamily: fontFamily.semibold },
 });

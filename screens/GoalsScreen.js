@@ -1,8 +1,11 @@
 import { useState, useEffect } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Platform, ActivityIndicator } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import BloomButton from '../components/BloomButton';
 import { supabase } from '../lib/supabase';
 import { useTheme } from '../context/ThemeContext';
+import { shadow } from '../theme/spacing';
+import { fontFamily } from '../theme/typography';
 
 const GOALS = [
   { id: 'period',        label: 'Track my period',           emoji: '📅', tip: 'Log your period start and end dates to build accurate cycle predictions.' },
@@ -72,7 +75,7 @@ export default function GoalsScreen() {
   if (loading) {
     return (
       <View style={[s.screen, { justifyContent: 'center', alignItems: 'center' }]}>
-        <ActivityIndicator size="large" color="#e75480" />
+        <ActivityIndicator size="large" color={theme.primary} />
       </View>
     );
   }
@@ -91,9 +94,7 @@ export default function GoalsScreen() {
           <Text style={s.headerSub}>Choose as many as you like — you can change these any time.</Text>
         </View>
         {!fromOnboarding && (
-          <TouchableOpacity onPress={() => navigation.navigate('Chat')} style={s.chatBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-            <Text style={s.chatBtnText}>⋯</Text>
-          </TouchableOpacity>
+          <BloomButton onPress={() => navigation.navigate('Chat')} />
         )}
       </View>
 
@@ -167,44 +168,42 @@ const styles = (theme) => StyleSheet.create({
   backBtn:    { padding: 2 },
   backArrow:  { fontSize: 22, color: theme.text },
   headerText: { flex: 1 },
-  headerTitle: { fontSize: 20, fontWeight: '700', color: theme.text },
+  headerTitle: { fontSize: 20, fontFamily: fontFamily.bold, color: theme.text },
   headerSub:   { fontSize: 12, color: theme.muted, marginTop: 2 },
-  chatBtn:     { padding: 4 },
-  chatBtnText: { color: theme.muted, fontSize: 24, letterSpacing: 2 },
 
   content: { padding: 16, paddingBottom: 32, gap: 16 },
 
   tipsSection:      { gap: 10 },
-  tipsSectionTitle: { fontSize: 14, fontWeight: '700', color: theme.text },
+  tipsSectionTitle: { fontSize: 14, fontFamily: fontFamily.bold, color: theme.text },
   tipCard: {
     flexDirection: 'row', alignItems: 'flex-start', gap: 12,
     backgroundColor: theme.card, borderRadius: 14, padding: 14,
-    borderLeftWidth: 3, borderLeftColor: '#e75480',
-    ...Platform.select({ web: { boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }, default: { shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 4, elevation: 1 } }),
+    borderLeftWidth: 3, borderLeftColor: theme.primary,
+    ...Platform.select(shadow),
   },
   tipEmoji:   { fontSize: 22, marginTop: 1 },
   tipContent: { flex: 1 },
-  tipLabel:   { fontSize: 13, fontWeight: '700', color: theme.text, marginBottom: 2 },
+  tipLabel:   { fontSize: 13, fontFamily: fontFamily.bold, color: theme.text, marginBottom: 2 },
   tipText:    { fontSize: 12, color: theme.muted, lineHeight: 18 },
 
-  gridTitle: { fontSize: 14, fontWeight: '700', color: theme.text },
+  gridTitle: { fontSize: 14, fontFamily: fontFamily.bold, color: theme.text },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   card: {
     width: '47%', backgroundColor: theme.card, borderRadius: 16, padding: 16,
     alignItems: 'center', borderWidth: 2, borderColor: 'transparent',
-    ...Platform.select({ web: { boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }, default: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 6, elevation: 2 } }),
+    ...Platform.select(shadow),
   },
-  cardSelected:      { borderColor: '#e75480' },
+  cardSelected:      { borderColor: theme.primary },
   iconCircle:        { width: 64, height: 64, borderRadius: 32, backgroundColor: theme.optionBg, alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
   iconCircleSelected:{ backgroundColor: theme.primaryLight },
   emoji:             { fontSize: 28 },
-  cardLabel:         { fontSize: 12, color: theme.text, textAlign: 'center', fontWeight: '500', lineHeight: 17 },
-  cardLabelSelected: { color: '#e75480', fontWeight: '700' },
-  checkBadge:        { position: 'absolute', top: 10, right: 10, width: 18, height: 18, borderRadius: 9, backgroundColor: '#e75480', alignItems: 'center', justifyContent: 'center' },
-  checkMark:         { color: '#fff', fontSize: 10, fontWeight: '700' },
+  cardLabel:         { fontSize: 12, color: theme.text, textAlign: 'center', fontFamily: fontFamily.medium, lineHeight: 17 },
+  cardLabelSelected: { color: theme.primary, fontFamily: fontFamily.bold },
+  checkBadge:        { position: 'absolute', top: 10, right: 10, width: 18, height: 18, borderRadius: 9, backgroundColor: theme.primary, alignItems: 'center', justifyContent: 'center' },
+  checkMark:         { color: '#fff', fontSize: 10, fontFamily: fontFamily.bold },
 
   footer:  { paddingHorizontal: 20, paddingVertical: 14, backgroundColor: theme.card, borderTopWidth: 1, borderTopColor: theme.border },
-  saveBtn: { backgroundColor: '#e75480', borderRadius: 14, paddingVertical: 15, alignItems: 'center' },
+  saveBtn: { backgroundColor: theme.primary, borderRadius: 14, paddingVertical: 15, alignItems: 'center' },
   saveBtnDisabled: { backgroundColor: '#f2b8cc' },
-  saveBtnText:     { color: '#fff', fontSize: 16, fontWeight: '700' },
+  saveBtnText:     { color: '#fff', fontSize: 16, fontFamily: fontFamily.bold },
 });

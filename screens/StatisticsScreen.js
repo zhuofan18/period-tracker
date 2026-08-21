@@ -1,10 +1,16 @@
 import { useState, useCallback } from 'react';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Platform, ActivityIndicator } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Platform, ActivityIndicator, Modal } from 'react-native';
+import { Calendar } from 'react-native-calendars';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import FadeInView from '../components/FadeInView';
+import BloomButton from '../components/BloomButton';
 import { supabase } from '../lib/supabase';
 import { useTheme } from '../context/ThemeContext';
 import { getCycleDay, getPhaseForDay, getDaysUntilNextPeriod, getNextPeriodDate, PHASES, CYCLE_LENGTH, PERIOD_LENGTH } from '../utils/cycleUtils';
+import { shadow, space, radius } from '../theme/spacing';
+import { fontFamily } from '../theme/typography';
+
+const todayStr = new Date().toISOString().split('T')[0];
 
 function calcStats(periods) {
   if (periods.length < 2) return null;
@@ -96,11 +102,11 @@ function StatCard({ label, value, unit, sub, color, theme }) {
 const cardStyles = (theme) => StyleSheet.create({
   card: {
     width: '47%', backgroundColor: theme.card, borderRadius: 16, padding: 16,
-    ...Platform.select({ web: { boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }, default: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 6, elevation: 2 } }),
+    ...Platform.select(shadow),
   },
-  cardLabel:    { fontSize: 12, color: theme.muted, marginBottom: 6, fontWeight: '500' },
+  cardLabel:    { fontSize: 12, color: theme.muted, marginBottom: 6, fontFamily: fontFamily.medium },
   cardValueRow: { flexDirection: 'row', alignItems: 'flex-end' },
-  cardValue:    { fontSize: 28, fontWeight: '800' },
+  cardValue:    { fontSize: 28, fontFamily: fontFamily.extrabold },
   cardUnit:     { fontSize: 13, color: theme.muted, marginBottom: 4 },
   cardSub:      { fontSize: 11, color: theme.muted, marginTop: 4 },
 });
@@ -111,7 +117,7 @@ function CycleBar({ days, maxDays, theme }) {
     <View style={{ alignItems: 'center', gap: 4 }}>
       <Text style={{ fontSize: 11, color: theme.muted }}>{days}d</Text>
       <View style={{ width: 32, height: 80, backgroundColor: theme.optionBg, borderRadius: 8, justifyContent: 'flex-end', overflow: 'hidden' }}>
-        <View style={{ width: '100%', height: barHeight, backgroundColor: '#e75480', borderRadius: 8 }} />
+        <View style={{ width: '100%', height: barHeight, backgroundColor: theme.primary, borderRadius: 8 }} />
       </View>
     </View>
   );
@@ -127,6 +133,9 @@ export default function StatisticsScreen() {
   const [profile, setProfile]         = useState(null);
   const [symptomTrends, setSymptomTrends] = useState([]);
   const [loading, setLoading]         = useState(true);
+
+  const [addModalVisible, setAddModalVisible] = useState(false);
+  const [pickedDate, setPickedDate]           = useState(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -155,73 +164,147 @@ export default function StatisticsScreen() {
   const cycleLength  = profile?.cycle_length  || CYCLE_LENGTH;
   const periodLength = profile?.period_length || PERIOD_LENGTH;
 
+  const openAddModal = () => {
+    setPickedDate(todayStr);
+    setAddModalVisible(true);
+  };
+
+  const confirmAddPeriod = async () => {
+    if (!pickedDate) return;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    setAddModalVisible(false);
+    const { data } = await supabase
+      .from('periods')
+      .insert({ user_id: user.id, start_date: pickedDate })
+      .select('start_date, end_date')
+      .single();
+    if (data) {
+      const updated = [...periods, data].sort((a, b) => new Date(b.start_date) - new Date(a.start_date));
+      setPeriods(updated);
+      setStats(updated.length >= 2 ? calcStats(updated) : null);
+    }
+    setPickedDate(null);
+  };
+
   const Header = () => (
     <View style={s.header}>
       <View style={s.headerTopRow}>
         <Text style={s.headerTitle}>Statistics & Insights</Text>
-        <TouchableOpacity onPress={() => navigation.navigate('Chat')} style={s.chatBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-          <Text style={s.chatBtnText}>⋯</Text>
-        </TouchableOpacity>
+        <View style={s.headerActions}>
+          <TouchableOpacity onPress={openAddModal} style={s.addBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <Text style={s.addBtnIcon}>＋</Text>
+          </TouchableOpacity>
+          <BloomButton onPress={() => navigation.navigate('Chat')} />
+        </View>
       </View>
     </View>
+  );
+
+  const AddPeriodModal = () => (
+    <Modal visible={addModalVisible} transparent animationType="fade" onRequestClose={() => setAddModalVisible(false)}>
+      <View style={s.modalOverlay}>
+        <View style={s.modalCard}>
+          <Text style={s.modalTitle}>Log a period</Text>
+          <Text style={s.modalSub}>Select the date it started — past dates are fine, this backfills your history.</Text>
+
+          <Calendar
+            current={todayStr}
+            maxDate={todayStr}
+            onDayPress={(day) => setPickedDate(day.dateString)}
+            markingType="simple"
+            markedDates={pickedDate ? { [pickedDate]: { selected: true, selectedColor: theme.primary } } : {}}
+            theme={{
+              backgroundColor:      theme.card,
+              calendarBackground:   theme.card,
+              todayTextColor:       theme.primary,
+              arrowColor:           theme.primary,
+              monthTextColor:       theme.text,
+              textMonthFontFamily:  fontFamily.bold,
+              textDayFontSize:      14,
+              dayTextColor:         theme.text,
+              textDisabledColor:    theme.muted,
+              selectedDayTextColor: '#fff',
+            }}
+            style={{ borderRadius: radius.md, overflow: 'hidden' }}
+          />
+
+          {pickedDate && (
+            <Text style={s.modalPicked}>
+              Selected: {new Date(pickedDate).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}
+            </Text>
+          )}
+
+          <View style={s.modalActions}>
+            <TouchableOpacity style={s.modalCancelBtn} onPress={() => setAddModalVisible(false)} activeOpacity={0.8}>
+              <Text style={s.modalCancelText}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[s.modalConfirmBtn, !pickedDate && s.modalConfirmDisabled]}
+              onPress={confirmAddPeriod}
+              disabled={!pickedDate}
+              activeOpacity={0.8}
+            >
+              <Text style={s.modalConfirmText}>Confirm</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
   );
 
   if (loading) {
     return (
       <View style={[s.screen, { justifyContent: 'center', alignItems: 'center' }]}>
-        <ActivityIndicator size="large" color="#e75480" />
+        <ActivityIndicator size="large" color={theme.primary} />
       </View>
     );
   }
 
+  let body;
+
   // No periods logged at all
   if (periods.length === 0) {
-    return (
-      <FadeInView style={s.screen}>
-        <Header />
-        <ScrollView contentContainerStyle={s.content}>
-          <View style={s.emptyCenter}>
-            <Text style={s.emptyEmoji}>📊</Text>
-            <Text style={s.emptyTitle}>No data yet</Text>
-            <Text style={s.emptySub}>Log your first period to start building your cycle insights.</Text>
-            <TouchableOpacity style={s.emptyBtn} onPress={() => navigation.navigate('Home')} activeOpacity={0.85}>
-              <Text style={s.emptyBtnText}>Go to Home to Log Period</Text>
-            </TouchableOpacity>
-          </View>
+    body = (
+      <>
+        <View style={s.emptyCenter}>
+          <Text style={s.emptyEmoji}>📊</Text>
+          <Text style={s.emptyTitle}>No data yet</Text>
+          <Text style={s.emptySub}>Log your first period to start building your cycle insights.</Text>
+          <TouchableOpacity style={s.emptyBtn} onPress={openAddModal} activeOpacity={0.85}>
+            <Text style={s.emptyBtnText}>Log a Period</Text>
+          </TouchableOpacity>
+        </View>
 
-          <Text style={s.previewLabel}>What you'll unlock</Text>
-          <View style={s.cardGrid}>
-            {[
-              { label: 'Avg. Cycle Length', icon: '📏' },
-              { label: 'Avg. Period Length', icon: '🗓️' },
-              { label: 'Cycle Regularity',  icon: '📈' },
-              { label: 'Cycles Tracked',    icon: '🔢' },
-            ].map(({ label, icon }) => (
-              <View key={label} style={s.lockedCard}>
-                <Text style={s.lockedIcon}>{icon}</Text>
-                <Text style={s.lockedLabel}>{label}</Text>
-                <View style={s.lockedBar} />
-              </View>
-            ))}
-          </View>
-        </ScrollView>
-      </FadeInView>
+        <Text style={s.previewLabel}>What you'll unlock</Text>
+        <View style={s.cardGrid}>
+          {[
+            { label: 'Avg. Cycle Length', icon: '📏' },
+            { label: 'Avg. Period Length', icon: '🗓️' },
+            { label: 'Cycle Regularity',  icon: '📈' },
+            { label: 'Cycles Tracked',    icon: '🔢' },
+          ].map(({ label, icon }) => (
+            <View key={label} style={s.lockedCard}>
+              <Text style={s.lockedIcon}>{icon}</Text>
+              <Text style={s.lockedLabel}>{label}</Text>
+              <View style={s.lockedBar} />
+            </View>
+          ))}
+        </View>
+      </>
     );
-  }
+  } else {
+    const lastPeriod     = periods[0];
+    const cycleDay       = getCycleDay(lastPeriod.start_date, cycleLength);
+    const phaseKey       = getPhaseForDay(cycleDay, periodLength);
+    const phase          = PHASES[phaseKey];
+    const daysLeft       = getDaysUntilNextPeriod(lastPeriod.start_date, cycleLength);
+    const nextPeriodDate = getNextPeriodDate(lastPeriod.start_date, cycleLength);
 
-  const lastPeriod    = periods[0];
-  const cycleDay      = getCycleDay(lastPeriod.start_date, cycleLength);
-  const phaseKey      = getPhaseForDay(cycleDay, periodLength);
-  const phase         = PHASES[phaseKey];
-  const daysLeft      = getDaysUntilNextPeriod(lastPeriod.start_date, cycleLength);
-  const nextPeriodDate = getNextPeriodDate(lastPeriod.start_date, cycleLength);
-
-  // 1 period — show current cycle snapshot, prompt for more
-  if (!stats) {
-    return (
-      <FadeInView style={s.screen}>
-        <Header />
-        <ScrollView contentContainerStyle={s.content}>
+    if (!stats) {
+      // 1 period — show current cycle snapshot, prompt for more
+      body = (
+        <>
           <View style={[s.snapshotCard, { borderLeftColor: phase.color }]}>
             <Text style={[s.snapshotPhase, { color: phase.color }]}>{phase.label}</Text>
             <Text style={s.snapshotLabel}>Current cycle</Text>
@@ -247,74 +330,88 @@ export default function StatisticsScreen() {
             </View>
             <Text style={s.progressHint}>1 of 2 periods logged</Text>
           </View>
-        </ScrollView>
-      </FadeInView>
-    );
-  }
 
-  // 2+ periods — full stats
-  const maxDays = Math.max(...stats.recentCycles);
+          <TouchableOpacity style={s.addPastBtn} onPress={openAddModal} activeOpacity={0.85}>
+            <Text style={s.addPastBtnText}>＋ Add a Past Period</Text>
+          </TouchableOpacity>
+        </>
+      );
+    } else {
+      // 2+ periods — full stats
+      const maxDays = Math.max(...stats.recentCycles);
+      body = (
+        <>
+          <View style={s.cardGrid}>
+            <StatCard label="Avg. Cycle Length"  value={stats.avg}                    unit="days"                         sub={`${stats.min}–${stats.max} day range`}         color={theme.primary} theme={theme} />
+            <StatCard label="Avg. Period Length" value={stats.avgPeriodLength ?? '—'} unit={stats.avgPeriodLength ? 'days' : ''} sub={stats.avgPeriodLength ? null : 'Log end dates to track'} color="#c084fc" theme={theme} />
+            <StatCard label="Cycle Regularity"   value={stats.regularity}             sub={`${stats.regularityPct}% consistent`}                                              color="#34d399" theme={theme} />
+            <StatCard label="Cycles Tracked"     value={stats.cyclesTracked}          unit="cycles"                                                                           color="#fb923c" theme={theme} />
+          </View>
+
+          <View style={s.section}>
+            <Text style={s.sectionTitle}>Cycle Regularity</Text>
+            <View style={s.regularityTrack}>
+              <View style={[s.regularityFill, { width: `${stats.regularityPct}%` }]} />
+            </View>
+            <View style={s.regularityLabels}>
+              <Text style={s.regularityLabelSide}>Irregular</Text>
+              <Text style={s.regularityValue}>{stats.regularityPct}%</Text>
+              <Text style={s.regularityLabelSide}>Regular</Text>
+            </View>
+          </View>
+
+          {stats.recentCycles.length > 0 && (
+            <View style={s.section}>
+              <Text style={s.sectionTitle}>Recent Cycles</Text>
+              <Text style={s.sectionSub}>Length of your last {stats.recentCycles.length} cycle{stats.recentCycles.length > 1 ? 's' : ''}</Text>
+              <View style={s.barChart}>
+                {stats.recentCycles.map((days, i) => (
+                  <CycleBar key={i} days={days} maxDays={maxDays} theme={theme} />
+                ))}
+              </View>
+            </View>
+          )}
+
+          {symptomTrends.length > 0 && (
+            <View style={s.section}>
+              <Text style={s.sectionTitle}>Period Symptom Trends</Text>
+              <Text style={s.sectionSub}>Based on your period-phase logs</Text>
+              {symptomTrends.map(({ symptom, count, total, pct }) => (
+                <View key={symptom} style={s.trendRow}>
+                  <Text style={s.trendLabel}>{symptom}</Text>
+                  <View style={s.trendBarBg}>
+                    <View style={[s.trendBarFill, { width: `${pct}%` }]} />
+                  </View>
+                  <Text style={s.trendPct}>{count}/{total}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+
+          <View style={s.insightBanner}>
+            <Text style={s.insightIcon}>💡</Text>
+            <Text style={s.insightText}>
+              {stats.regularityPct >= 75
+                ? `Your cycles have been consistent over the past ${stats.cyclesTracked} cycles. Keep logging to improve prediction accuracy.`
+                : `Your cycles vary by ${stats.max - stats.min} days. Keep logging to help identify patterns.`}
+            </Text>
+          </View>
+
+          <TouchableOpacity style={s.addPastBtn} onPress={openAddModal} activeOpacity={0.85}>
+            <Text style={s.addPastBtnText}>＋ Add a Past Period</Text>
+          </TouchableOpacity>
+        </>
+      );
+    }
+  }
 
   return (
     <FadeInView style={s.screen}>
       <Header />
       <ScrollView contentContainerStyle={s.content}>
-        <View style={s.cardGrid}>
-          <StatCard label="Avg. Cycle Length"  value={stats.avg}                    unit="days"                         sub={`${stats.min}–${stats.max} day range`}         color="#e75480" theme={theme} />
-          <StatCard label="Avg. Period Length" value={stats.avgPeriodLength ?? '—'} unit={stats.avgPeriodLength ? 'days' : ''} sub={stats.avgPeriodLength ? null : 'Log end dates to track'} color="#c084fc" theme={theme} />
-          <StatCard label="Cycle Regularity"   value={stats.regularity}             sub={`${stats.regularityPct}% consistent`}                                              color="#34d399" theme={theme} />
-          <StatCard label="Cycles Tracked"     value={stats.cyclesTracked}          unit="cycles"                                                                           color="#fb923c" theme={theme} />
-        </View>
-
-        <View style={s.section}>
-          <Text style={s.sectionTitle}>Cycle Regularity</Text>
-          <View style={s.regularityTrack}>
-            <View style={[s.regularityFill, { width: `${stats.regularityPct}%` }]} />
-          </View>
-          <View style={s.regularityLabels}>
-            <Text style={s.regularityLabelSide}>Irregular</Text>
-            <Text style={s.regularityValue}>{stats.regularityPct}%</Text>
-            <Text style={s.regularityLabelSide}>Regular</Text>
-          </View>
-        </View>
-
-        {stats.recentCycles.length > 0 && (
-          <View style={s.section}>
-            <Text style={s.sectionTitle}>Recent Cycles</Text>
-            <Text style={s.sectionSub}>Length of your last {stats.recentCycles.length} cycle{stats.recentCycles.length > 1 ? 's' : ''}</Text>
-            <View style={s.barChart}>
-              {stats.recentCycles.map((days, i) => (
-                <CycleBar key={i} days={days} maxDays={maxDays} theme={theme} />
-              ))}
-            </View>
-          </View>
-        )}
-
-        {symptomTrends.length > 0 && (
-          <View style={s.section}>
-            <Text style={s.sectionTitle}>Period Symptom Trends</Text>
-            <Text style={s.sectionSub}>Based on your period-phase logs</Text>
-            {symptomTrends.map(({ symptom, count, total, pct }) => (
-              <View key={symptom} style={s.trendRow}>
-                <Text style={s.trendLabel}>{symptom}</Text>
-                <View style={s.trendBarBg}>
-                  <View style={[s.trendBarFill, { width: `${pct}%` }]} />
-                </View>
-                <Text style={s.trendPct}>{count}/{total}</Text>
-              </View>
-            ))}
-          </View>
-        )}
-
-        <View style={s.insightBanner}>
-          <Text style={s.insightIcon}>💡</Text>
-          <Text style={s.insightText}>
-            {stats.regularityPct >= 75
-              ? `Your cycles have been consistent over the past ${stats.cyclesTracked} cycles. Keep logging to improve prediction accuracy.`
-              : `Your cycles vary by ${stats.max - stats.min} days. Keep logging to help identify patterns.`}
-          </Text>
-        </View>
+        {body}
       </ScrollView>
+      <AddPeriodModal />
     </FadeInView>
   );
 }
@@ -323,68 +420,87 @@ const styles = (theme) => StyleSheet.create({
   screen:       { flex: 1, backgroundColor: theme.surface },
   header:       { paddingHorizontal: 20, paddingTop: Platform.OS === 'android' ? 40 : 50, paddingBottom: 14, backgroundColor: theme.card, borderBottomWidth: 1, borderBottomColor: theme.border },
   headerTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  headerTitle:  { fontSize: 20, fontWeight: '700', color: theme.text },
-  chatBtn:      { padding: 4 },
-  chatBtnText:  { color: theme.muted, fontSize: 24, letterSpacing: 2, fontWeight: '400' },
+  headerTitle:  { fontSize: 20, fontFamily: fontFamily.bold, color: theme.text },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  addBtn:       { width: 30, height: 30, borderRadius: radius.pill, backgroundColor: theme.primary, alignItems: 'center', justifyContent: 'center' },
+  addBtnIcon:   { color: '#fff', fontSize: 17, fontFamily: fontFamily.bold, lineHeight: 19 },
   content:      { padding: 20, gap: 16, paddingBottom: 32 },
 
   emptyCenter:  { alignItems: 'center', paddingVertical: 32 },
   emptyEmoji:   { fontSize: 48, marginBottom: 16 },
-  emptyTitle:   { fontSize: 17, fontWeight: '700', color: theme.text, marginBottom: 8 },
+  emptyTitle:   { fontSize: 17, fontFamily: fontFamily.bold, color: theme.text, marginBottom: 8 },
   emptySub:     { fontSize: 13, color: theme.muted, textAlign: 'center', lineHeight: 20, marginBottom: 20 },
-  emptyBtn:     { backgroundColor: '#e75480', borderRadius: 12, paddingVertical: 12, paddingHorizontal: 24 },
-  emptyBtnText: { color: '#fff', fontSize: 14, fontWeight: '600' },
-  previewLabel: { fontSize: 13, fontWeight: '700', color: theme.muted, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 12 },
+  emptyBtn:     { backgroundColor: theme.primary, borderRadius: 12, paddingVertical: 12, paddingHorizontal: 24 },
+  emptyBtnText: { color: '#fff', fontSize: 14, fontFamily: fontFamily.semibold },
+  previewLabel: { fontSize: 13, fontFamily: fontFamily.bold, color: theme.muted, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 12 },
   lockedCard: {
     width: '47%', backgroundColor: theme.card, borderRadius: 16, padding: 16, alignItems: 'center', gap: 8, opacity: 0.5,
-    ...Platform.select({ web: { boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }, default: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 6, elevation: 2 } }),
+    ...Platform.select(shadow),
   },
   lockedIcon:  { fontSize: 24 },
-  lockedLabel: { fontSize: 12, color: theme.muted, textAlign: 'center', fontWeight: '500' },
+  lockedLabel: { fontSize: 12, color: theme.muted, textAlign: 'center', fontFamily: fontFamily.medium },
   lockedBar:   { width: '80%', height: 8, backgroundColor: theme.border, borderRadius: 4 },
 
   snapshotCard: {
     backgroundColor: theme.card, borderRadius: 16, padding: 20, borderLeftWidth: 4,
-    ...Platform.select({ web: { boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }, default: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 6, elevation: 2 } }),
+    ...Platform.select(shadow),
   },
-  snapshotPhase:   { fontSize: 13, fontWeight: '700', marginBottom: 2 },
+  snapshotPhase:   { fontSize: 13, fontFamily: fontFamily.bold, marginBottom: 2 },
   snapshotLabel:   { fontSize: 11, color: theme.muted, marginBottom: 16 },
   snapshotRow:     { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
   snapshotItem:    { flex: 1, alignItems: 'center' },
-  snapshotNum:     { fontSize: 42, fontWeight: '800', lineHeight: 48 },
+  snapshotNum:     { fontSize: 42, fontFamily: fontFamily.extrabold, lineHeight: 48 },
   snapshotUnit:    { fontSize: 12, color: theme.muted, marginTop: 2 },
   snapshotDivider: { width: 1, height: 56, backgroundColor: theme.border, marginHorizontal: 16 },
   snapshotNext:    { fontSize: 12, color: theme.muted, textAlign: 'center' },
 
   progressCard:   {
     backgroundColor: theme.card, borderRadius: 16, padding: 18,
-    ...Platform.select({ web: { boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }, default: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 6, elevation: 2 } }),
+    ...Platform.select(shadow),
   },
-  progressTitle:  { fontSize: 15, fontWeight: '700', color: theme.text, marginBottom: 6 },
+  progressTitle:  { fontSize: 15, fontFamily: fontFamily.bold, color: theme.text, marginBottom: 6 },
   progressSub:    { fontSize: 13, color: theme.muted, lineHeight: 19, marginBottom: 16 },
   progressBarBg:  { height: 8, backgroundColor: theme.optionBg, borderRadius: 4, overflow: 'hidden', marginBottom: 6 },
-  progressBarFill: { height: '100%', backgroundColor: '#e75480', borderRadius: 4 },
+  progressBarFill: { height: '100%', backgroundColor: theme.primary, borderRadius: 4 },
   progressHint:   { fontSize: 11, color: theme.muted, textAlign: 'right' },
 
   cardGrid:    { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   section: {
     backgroundColor: theme.card, borderRadius: 16, padding: 18,
-    ...Platform.select({ web: { boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }, default: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 6, elevation: 2 } }),
+    ...Platform.select(shadow),
   },
-  sectionTitle:        { fontSize: 15, fontWeight: '700', color: theme.text, marginBottom: 4 },
+  sectionTitle:        { fontSize: 15, fontFamily: fontFamily.bold, color: theme.text, marginBottom: 4 },
   sectionSub:          { fontSize: 12, color: theme.muted, marginBottom: 16 },
   regularityTrack:     { height: 12, backgroundColor: theme.optionBg, borderRadius: 6, overflow: 'hidden', marginTop: 12 },
   regularityFill:      { height: '100%', backgroundColor: '#34d399', borderRadius: 6 },
   regularityLabels:    { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 },
   regularityLabelSide: { fontSize: 11, color: theme.muted },
-  regularityValue:     { fontSize: 13, fontWeight: '700', color: '#34d399' },
+  regularityValue:     { fontSize: 13, fontFamily: fontFamily.bold, color: '#34d399' },
   barChart:            { flexDirection: 'row', justifyContent: 'space-around', alignItems: 'flex-end', height: 110, marginTop: 8 },
   trendRow:     { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 10 },
   trendLabel:   { width: 120, fontSize: 12, color: theme.text },
   trendBarBg:   { flex: 1, height: 8, backgroundColor: theme.optionBg, borderRadius: 4, overflow: 'hidden' },
-  trendBarFill: { height: '100%', backgroundColor: '#e75480', borderRadius: 4 },
+  trendBarFill: { height: '100%', backgroundColor: theme.primary, borderRadius: 4 },
   trendPct:     { fontSize: 11, color: theme.muted, width: 32, textAlign: 'right' },
   insightBanner:       { flexDirection: 'row', backgroundColor: theme.primaryLight, borderRadius: 14, padding: 16, gap: 12, alignItems: 'flex-start', borderWidth: 1, borderColor: theme.primary + '33' },
   insightIcon:         { fontSize: 20 },
   insightText:         { flex: 1, fontSize: 13, color: theme.text, lineHeight: 20 },
+
+  addPastBtn: {
+    borderWidth: 1.5, borderColor: theme.primary, borderRadius: radius.md,
+    paddingVertical: 13, alignItems: 'center', backgroundColor: theme.card,
+  },
+  addPastBtnText: { fontSize: 14, fontFamily: fontFamily.semibold, color: theme.primary },
+
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: space.xl },
+  modalCard:    { backgroundColor: theme.card, borderRadius: radius.xl, padding: space.xl, width: '100%', maxWidth: 420 },
+  modalTitle:   { fontSize: 18, fontFamily: fontFamily.bold, color: theme.text, marginBottom: space.xs },
+  modalSub:     { fontSize: 13, color: theme.muted, marginBottom: space.lg, lineHeight: 18 },
+  modalPicked:  { fontSize: 13, fontFamily: fontFamily.semibold, color: theme.primary, textAlign: 'center', marginTop: space.md },
+  modalActions: { flexDirection: 'row', gap: space.md, marginTop: space.xl },
+  modalCancelBtn:  { flex: 1, paddingVertical: space.md + 2, borderRadius: radius.md, alignItems: 'center', backgroundColor: theme.optionBg },
+  modalCancelText: { fontSize: 15, fontFamily: fontFamily.semibold, color: theme.subtext },
+  modalConfirmBtn: { flex: 1, paddingVertical: space.md + 2, borderRadius: radius.md, alignItems: 'center', backgroundColor: theme.primary },
+  modalConfirmDisabled: { backgroundColor: '#f2b8cc' },
+  modalConfirmText: { fontSize: 15, fontFamily: fontFamily.semibold, color: '#fff' },
 });

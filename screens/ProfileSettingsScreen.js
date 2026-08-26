@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, TextInput, Switch, Modal, Linking, Platform, Alert } from 'react-native';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
 import FadeInView from '../components/FadeInView';
 import BloomButton from '../components/BloomButton';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -12,6 +14,7 @@ import {
   scheduleDailyLogReminder, cancelDailyLogReminder,
 } from '../utils/notifications';
 import { getNextPeriodDate, CYCLE_LENGTH } from '../utils/cycleUtils';
+import { PRIVACY_POLICY, TERMS_OF_SERVICE } from '../utils/legalContent';
 import { shadow } from '../theme/spacing';
 import { fontFamily } from '../theme/typography';
 
@@ -98,8 +101,77 @@ export default function ProfileSettingsScreen({ navigation }) {
   const [dailyLog, setDailyLog]               = useState(false);
   const [lastPeriodStart, setLastPeriodStart] = useState(null);
   const [cycleLen, setCycleLen]               = useState(CYCLE_LENGTH);
+  const [exporting, setExporting]             = useState(false);
+  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText]   = useState('');
+  const [deleting, setDeleting]               = useState(false);
 
   const initials = `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase() || '?';
+
+  const handleExportData = async () => {
+    setExporting(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const [{ data: profileRow }, { data: periods }, { data: logs }, { data: goalsRow }] = await Promise.all([
+        supabase.from('profiles').select('*').eq('id', user.id).single(),
+        supabase.from('periods').select('*').eq('user_id', user.id).order('start_date', { ascending: false }),
+        supabase.from('daily_logs').select('*').eq('user_id', user.id).order('log_date', { ascending: false }),
+        supabase.from('user_goals').select('goals').eq('user_id', user.id).maybeSingle(),
+      ]);
+
+      const payload = {
+        exportedAt: new Date().toISOString(),
+        account: { id: user.id, email: user.email },
+        profile: profileRow || null,
+        periods: periods || [],
+        dailyLogs: logs || [],
+        goals: goalsRow?.goals || [],
+      };
+      const json = JSON.stringify(payload, null, 2);
+      const filename = `luna-data-export-${new Date().toISOString().split('T')[0]}.json`;
+
+      if (Platform.OS === 'web') {
+        const blob = new Blob([json], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      } else {
+        const fileUri = FileSystem.documentDirectory + filename;
+        await FileSystem.writeAsStringAsync(fileUri, json, { encoding: FileSystem.EncodingType.UTF8 });
+        if (await Sharing.isAvailableAsync()) {
+          await Sharing.shareAsync(fileUri, { mimeType: 'application/json', dialogTitle: 'Export Your Luna Data' });
+        } else {
+          Alert.alert('Export complete', `Saved to ${fileUri}`);
+        }
+      }
+    } catch (e) {
+      Alert.alert('Export failed', e.message || 'Something went wrong. Please try again.');
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    setDeleting(true);
+    try {
+      const { error } = await supabase.functions.invoke('delete-account');
+      if (error) throw error;
+      await supabase.auth.signOut();
+      setDeleteModalVisible(false);
+      navigation.navigate('Login');
+    } catch (e) {
+      Alert.alert('Delete failed', e.message || 'Something went wrong. Please try again or contact support.');
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   const handleLogout = () => {
     const doLogout = async () => {
@@ -393,7 +465,8 @@ export default function ProfileSettingsScreen({ navigation }) {
                   { q: 'How do I update my cycle length?', a: 'Go to Profile & Settings, tap Edit in the Personal Information section, and update your Cycle Length.' },
                   { q: 'How do I log a new period start?', a: 'On the Home screen, tap the "My period started" card at the bottom to select your period start date.' },
                   { q: 'Is my data private?', a: 'Yes. Your data is stored securely and is never shared with third parties. Only you can access your cycle information.' },
-                  { q: 'How do I delete my account?', a: 'Please contact us through the Contact Us section and we will delete your account and data within 30 days.' },
+                  { q: 'How do I delete my account?', a: 'Scroll to the Danger Zone section of Profile & Settings and tap "Delete Account". This permanently removes your account and all data immediately — no waiting required.' },
+                  { q: 'Can I export my data?', a: 'Yes — tap "Export My Data" in Profile & Settings to download a JSON file with your full period history, daily logs, and profile info.' },
                 ].map(({ q, a }, i) => (
                   <View key={i} style={s.faqItem}>
                     <Text style={s.faqQ}>{q}</Text>
@@ -416,13 +489,7 @@ export default function ProfileSettingsScreen({ navigation }) {
                 </TouchableOpacity>
               </View>
               <ScrollView showsVerticalScrollIndicator={false}>
-                {[
-                  { heading: 'Data We Collect', body: 'We collect the information you provide during sign-up (name, email, age, height, weight) and the health data you log in the app (period dates, cycle length, symptoms, daily logs, and notes).' },
-                  { heading: 'How We Use Your Data', body: 'Your data is used solely to provide cycle tracking features, generate predictions, and personalise your experience. We do not sell or share your personal data with third parties.' },
-                  { heading: 'Data Storage & Security', body: 'Your data is stored securely using Supabase with Row Level Security — only your account can access your data. We use industry-standard encryption in transit and at rest.' },
-                  { heading: 'Your Rights', body: 'You can view, edit, or delete your personal information at any time via the Profile & Settings screen. To request full account deletion, please contact us.' },
-                  { heading: 'Contact', body: 'If you have any privacy concerns, please reach out via the Contact Us section in this app.' },
-                ].map(({ heading, body }, i) => (
+                {PRIVACY_POLICY.map(({ heading, body }, i) => (
                   <View key={i} style={s.policySection}>
                     <Text style={s.policyHeading}>{heading}</Text>
                     <Text style={s.policyBody}>{body}</Text>
@@ -444,14 +511,7 @@ export default function ProfileSettingsScreen({ navigation }) {
                 </TouchableOpacity>
               </View>
               <ScrollView showsVerticalScrollIndicator={false}>
-                {[
-                  { heading: 'Acceptance of Terms', body: 'By using this app, you agree to these Terms of Service. If you do not agree, please do not use the app.' },
-                  { heading: 'Not Medical Advice', body: 'This app provides general cycle tracking and wellness information only. It is not a substitute for professional medical advice, diagnosis, or treatment. Always consult a qualified healthcare provider for medical concerns.' },
-                  { heading: 'Account Responsibility', body: 'You are responsible for maintaining the confidentiality of your account credentials and for all activity under your account.' },
-                  { heading: 'Accuracy of Information', body: 'Cycle predictions are estimates based on your logged data. Cycles naturally vary and predictions may not always be accurate. Do not rely on this app as a method of contraception.' },
-                  { heading: 'Prohibited Use', body: 'You may not use this app for any unlawful purpose or in any way that could harm other users or the service.' },
-                  { heading: 'Changes to Terms', body: 'We may update these terms from time to time. Continued use of the app after changes constitutes acceptance of the new terms.' },
-                ].map(({ heading, body }, i) => (
+                {TERMS_OF_SERVICE.map(({ heading, body }, i) => (
                   <View key={i} style={s.policySection}>
                     <Text style={s.policyHeading}>{heading}</Text>
                     <Text style={s.policyBody}>{body}</Text>
@@ -487,6 +547,61 @@ export default function ProfileSettingsScreen({ navigation }) {
             </View>
           </View>
         </Modal>
+
+        {/* Delete Account confirmation */}
+        <Modal visible={deleteModalVisible} transparent animationType="slide" onRequestClose={() => !deleting && setDeleteModalVisible(false)}>
+          <View style={s.modalOverlay}>
+            <View style={s.modalCard}>
+              <View style={s.modalHeader}>
+                <Text style={s.modalTitle}>Delete Account</Text>
+                {!deleting && (
+                  <TouchableOpacity onPress={() => { setDeleteModalVisible(false); setDeleteConfirmText(''); }}>
+                    <Text style={s.modalClose}>✕</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+              <Text style={s.deleteWarning}>
+                This permanently deletes your account, profile, period history, daily logs, and goals. This cannot be undone.
+              </Text>
+              <Text style={s.deleteConfirmLabel}>Type DELETE to confirm</Text>
+              <TextInput
+                style={s.deleteConfirmInput}
+                value={deleteConfirmText}
+                onChangeText={setDeleteConfirmText}
+                autoCapitalize="characters"
+                placeholder="DELETE"
+                placeholderTextColor={theme.placeholder}
+                editable={!deleting}
+              />
+              <TouchableOpacity
+                style={[s.deleteConfirmBtn, (deleteConfirmText !== 'DELETE' || deleting) && s.deleteConfirmBtnDisabled]}
+                onPress={handleDeleteAccount}
+                disabled={deleteConfirmText !== 'DELETE' || deleting}
+                activeOpacity={0.8}
+              >
+                <Text style={s.deleteConfirmBtnText}>{deleting ? 'Deleting…' : 'Permanently Delete My Account'}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Your Data */}
+        <View style={s.section}>
+          <Text style={s.sectionTitle}>Your Data</Text>
+          <TouchableOpacity style={s.exportBtn} onPress={handleExportData} activeOpacity={0.8} disabled={exporting}>
+            <Text style={s.exportBtnText}>{exporting ? 'Preparing export…' : '⬇️  Export My Data'}</Text>
+          </TouchableOpacity>
+          <Text style={s.exportHint}>Downloads a JSON file with your full period history, daily logs, and profile info.</Text>
+        </View>
+
+        {/* Danger Zone */}
+        <View style={s.section}>
+          <Text style={[s.sectionTitle, { color: '#ff4d4d' }]}>Danger Zone</Text>
+          <Text style={s.dangerHint}>Permanently delete your account and all associated data. This cannot be undone.</Text>
+          <TouchableOpacity style={s.deleteBtn} onPress={() => setDeleteModalVisible(true)} activeOpacity={0.8}>
+            <Text style={s.deleteBtnText}>Delete Account</Text>
+          </TouchableOpacity>
+        </View>
 
         {/* Log Out */}
         <TouchableOpacity style={s.logoutBtn} onPress={handleLogout} activeOpacity={0.8}>
@@ -560,6 +675,24 @@ const styles = (theme) => StyleSheet.create({
   contactEmailLabel: { fontSize: 12, color: theme.muted, marginBottom: 4 },
   contactEmailAddr:  { fontSize: 15, fontFamily: fontFamily.bold, color: theme.primary },
   contactNote:  { fontSize: 12, color: theme.muted, textAlign: 'center' },
+
+  exportBtn: { backgroundColor: theme.optionBg, borderRadius: 12, paddingVertical: 13, alignItems: 'center', borderWidth: 1.5, borderColor: theme.primary },
+  exportBtnText: { fontSize: 14, fontFamily: fontFamily.semibold, color: theme.primary },
+  exportHint: { fontSize: 12, color: theme.muted, marginTop: 10, lineHeight: 17 },
+
+  dangerHint: { fontSize: 12, color: theme.muted, marginBottom: 14, lineHeight: 17 },
+  deleteBtn: { backgroundColor: '#ff4d4d', borderRadius: 12, paddingVertical: 13, alignItems: 'center' },
+  deleteBtnText: { fontSize: 14, fontFamily: fontFamily.bold, color: '#fff' },
+  deleteWarning: { fontSize: 13, color: theme.subtext, lineHeight: 19, marginBottom: 18 },
+  deleteConfirmLabel: { fontSize: 12, color: theme.muted, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 },
+  deleteConfirmInput: {
+    borderWidth: 1.5, borderColor: theme.inputBorder, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12,
+    fontSize: 15, color: theme.text, backgroundColor: theme.inputBg, marginBottom: 18,
+  },
+  deleteConfirmBtn: { backgroundColor: '#ff4d4d', borderRadius: 12, paddingVertical: 15, alignItems: 'center' },
+  deleteConfirmBtnDisabled: { backgroundColor: '#ff4d4d55' },
+  deleteConfirmBtnText: { fontSize: 15, fontFamily: fontFamily.bold, color: '#fff' },
+
   logoutBtn: { backgroundColor: theme.card, borderRadius: 16, paddingVertical: 16, alignItems: 'center', borderWidth: 1.5, borderColor: '#ff4d4d' },
   logoutText: { fontSize: 15, fontFamily: fontFamily.bold, color: '#ff4d4d' },
 });

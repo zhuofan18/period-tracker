@@ -4,7 +4,7 @@ import { useNavigation } from '@react-navigation/native';
 import { supabase } from '../lib/supabase';
 import { useTheme } from '../context/ThemeContext';
 import { SYMPTOM_EMOJI_MAP, MOOD_EMOJI_MAP } from '../components/SymptomMoodPicker';
-import { getPhaseForDay, PHASES, CYCLE_LENGTH, PERIOD_LENGTH } from '../utils/cycleUtils';
+import { getPhaseForDay, getAvgCycleLength, PHASES, CYCLE_LENGTH, PERIOD_LENGTH } from '../utils/cycleUtils';
 import { shadow } from '../theme/spacing';
 import { fontFamily } from '../theme/typography';
 
@@ -63,18 +63,24 @@ export default function LogHistoryScreen() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { setLoading(false); return; }
 
+      // Pull recent history (not just the latest period) so cycle length can be
+      // learned from real data instead of relying on the static profile setting.
       const [{ data: profile }, { data: periods }, { data: logData }] = await Promise.all([
         supabase.from('profiles').select('cycle_length, period_length').eq('id', user.id).single(),
-        supabase.from('periods').select('start_date').eq('user_id', user.id).order('start_date', { ascending: false }).limit(1),
+        supabase.from('periods').select('start_date').eq('user_id', user.id).order('start_date', { ascending: false }).limit(12),
         supabase.from('daily_logs')
           .select('log_date, phase_answers, notes, updated_at')
           .eq('user_id', user.id)
           .order('log_date', { ascending: false }),
       ]);
 
-      if (profile?.cycle_length)  setCycleLength(profile.cycle_length);
       if (profile?.period_length) setPeriodLength(profile.period_length);
-      if (periods?.[0])           setLastPeriodStart(periods[0].start_date);
+      if (periods?.length) {
+        setLastPeriodStart(periods[0].start_date);
+        setCycleLength(getAvgCycleLength(periods, profile?.cycle_length || CYCLE_LENGTH));
+      } else {
+        setCycleLength(profile?.cycle_length || CYCLE_LENGTH);
+      }
       setLogs(logData || []);
       setLoading(false);
     };
@@ -85,7 +91,7 @@ export default function LogHistoryScreen() {
     if (!lastPeriodStart) return 'follicular';
     const diff = Math.floor((new Date(dateStr) - new Date(lastPeriodStart)) / 86400000);
     if (diff < 0) return 'follicular';
-    return getPhaseForDay((diff % cycleLength) + 1, periodLength);
+    return getPhaseForDay((diff % cycleLength) + 1, periodLength, cycleLength);
   };
 
   const openLog = (dateStr) =>

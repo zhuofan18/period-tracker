@@ -32,7 +32,14 @@ export default function LoginScreen({ navigation }) {
         </TouchableOpacity>
 
         <Text style={s.disclaimer}>
-          By continuing, you agree to our Terms of Service and Privacy Policy.
+          By continuing, you agree to our{' '}
+          <Text style={s.disclaimerLink} onPress={() => navigation.navigate('Legal', { doc: 'terms' })}>
+            Terms of Service
+          </Text>{' '}
+          and{' '}
+          <Text style={s.disclaimerLink} onPress={() => navigation.navigate('Legal', { doc: 'privacy' })}>
+            Privacy Policy
+          </Text>.
         </Text>
       </View>
     </View>
@@ -100,5 +107,9 @@ const styles = (theme) => StyleSheet.create({
     textAlign: 'center',
     lineHeight: 16,
     marginTop: 4,
+  },
+  disclaimerLink: {
+    color: theme.primary,
+    fontFamily: fontFamily.semibold,
   },
 });

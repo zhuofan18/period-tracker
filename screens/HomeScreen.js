@@ -7,7 +7,7 @@ import { Calendar } from 'react-native-calendars';
 import { useFocusEffect } from '@react-navigation/native';
 import { supabase } from '../lib/supabase';
 import { useTheme } from '../context/ThemeContext';
-import { getCycleDay, getPhaseForDay, getDaysUntilNextPeriod, getNextPeriodDate, PHASES, CYCLE_LENGTH, PERIOD_LENGTH, getCurrentCycleStart, getPhaseDates } from '../utils/cycleUtils';
+import { getCycleDay, getPhaseForDay, getDaysUntilNextPeriod, getNextPeriodDate, getAvgCycleLength, PHASES, CYCLE_LENGTH, PERIOD_LENGTH, getCurrentCycleStart, getPhaseDates } from '../utils/cycleUtils';
 import { EDUCATION_TOPICS, HEALTH_FACTS } from '../utils/educationData';
 import { space, radius, shadow } from '../theme/spacing';
 import { fontFamily, type } from '../theme/typography';
@@ -92,12 +92,13 @@ function FactCard({ fact, s }) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function HomeScreen({ navigation }) {
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   const s = styles(theme);
 
   const [lastPeriodStart, setLastPeriodStart] = useState(null);
   const [latestPeriodId, setLatestPeriodId]   = useState(null);
   const [periodEnded, setPeriodEnded]         = useState(false);
+  const [periodCount, setPeriodCount]         = useState(0);
   const [loading, setLoading]                 = useState(true);
   const [modalVisible, setModalVisible]       = useState(false);
   const [pickedDate, setPickedDate]           = useState(null);
@@ -115,23 +116,28 @@ export default function HomeScreen({ navigation }) {
         const { data: profile } = await supabase.from('profiles').select('first_name, username, cycle_length, period_length').eq('id', user.id).single();
         if (profile) {
           setDisplayName(profile.first_name || profile.username || '');
-          if (profile.cycle_length)  setCycleLength(profile.cycle_length);
           if (profile.period_length) setPeriodLength(profile.period_length);
         }
+        // Pull recent history (not just the latest period) so cycle length can be
+        // learned from real data instead of relying on the static profile setting.
         const { data: periods } = await supabase
           .from('periods')
           .select('id, start_date, end_date')
           .eq('user_id', user.id)
           .order('start_date', { ascending: false })
-          .limit(1);
+          .limit(12);
         if (periods && periods.length > 0) {
           setLastPeriodStart(periods[0].start_date);
           setLatestPeriodId(periods[0].id);
           setPeriodEnded(!!periods[0].end_date);
+          setPeriodCount(periods.length);
+          setCycleLength(getAvgCycleLength(periods, profile?.cycle_length || CYCLE_LENGTH));
         } else {
           setLastPeriodStart(null);
           setLatestPeriodId(null);
           setPeriodEnded(false);
+          setPeriodCount(0);
+          setCycleLength(profile?.cycle_length || CYCLE_LENGTH);
         }
         setLoading(false);
       };
@@ -140,7 +146,7 @@ export default function HomeScreen({ navigation }) {
   );
 
   const cycleDay          = lastPeriodStart ? getCycleDay(lastPeriodStart, cycleLength) : null;
-  const phaseKey          = cycleDay ? getPhaseForDay(cycleDay, periodLength) : 'follicular';
+  const phaseKey          = cycleDay ? getPhaseForDay(cycleDay, periodLength, cycleLength) : 'follicular';
   const phase             = PHASES[phaseKey];
   const daysLeft          = lastPeriodStart ? getDaysUntilNextPeriod(lastPeriodStart, cycleLength) : null;
   const nextPeriod        = lastPeriodStart ? getNextPeriodDate(lastPeriodStart, cycleLength) : null;
@@ -246,6 +252,9 @@ export default function HomeScreen({ navigation }) {
               <Text style={[s.bigNum, { color: phase.color }]}>{loading ? '—' : daysLeft}</Text>
               <Text style={s.unit}>days</Text>
               <Text style={s.nextDate}>{loading ? '' : nextPeriod}</Text>
+              {periodCount >= 2 && (
+                <Text style={s.predictionNote}>Based on your last {Math.min(periodCount - 1, 11)} cycle{periodCount - 1 > 1 ? 's' : ''}</Text>
+              )}
             </View>
           </View>
         )}
@@ -255,7 +264,7 @@ export default function HomeScreen({ navigation }) {
           <Text style={s.sectionTitle}>Your Cycle</Text>
           <View style={s.strip}>
             {days.map((d) => {
-              const pk = getPhaseForDay(d);
+              const pk = getPhaseForDay(d, periodLength, cycleLength);
               const color = PHASES[pk]?.color ?? '#eee';
               return (
                 <View key={d} style={[s.stripDay, { backgroundColor: color }, d === cycleDay && s.stripDayCurrent]} />
@@ -264,8 +273,8 @@ export default function HomeScreen({ navigation }) {
           </View>
           <View style={s.stripLabels}>
             <Text style={s.stripLabel}>Day 1</Text>
-            <Text style={s.stripLabel}>Day 14</Text>
-            <Text style={s.stripLabel}>Day 28</Text>
+            <Text style={s.stripLabel}>Day {Math.round(cycleLength / 2)}</Text>
+            <Text style={s.stripLabel}>Day {cycleLength}</Text>
           </View>
           <View style={s.legend}>
             {Object.entries(PHASES).map(([key, val]) => (
@@ -368,6 +377,7 @@ export default function HomeScreen({ navigation }) {
             <Text style={s.modalSub}>Select a date below</Text>
 
             <Calendar
+              key={isDark ? 'dark' : 'light'}
               current={today}
               maxDate={today}
               onDayPress={(day) => setPickedDate(day.dateString)}
@@ -441,6 +451,7 @@ const styles = (theme) => StyleSheet.create({
   bigNum: { fontFamily: fontFamily.extrabold, fontSize: 52, lineHeight: 58 },
   unit: { ...type.small, color: theme.muted },
   nextDate: { ...type.caption, color: theme.muted, marginTop: space.xs, textAlign: 'center' },
+  predictionNote: { ...type.caption, fontSize: 10, color: theme.muted, opacity: 0.8, marginTop: 2, textAlign: 'center' },
   phasePill: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: space.sm + 2, paddingVertical: 4, borderRadius: radius.pill, borderWidth: 1, marginTop: space.xs + 2 },
   phaseDot: { width: 7, height: 7, borderRadius: 4 },
   phasePillText: { ...type.caption, fontFamily: fontFamily.semibold },

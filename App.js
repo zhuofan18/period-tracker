@@ -36,6 +36,7 @@ import StatisticsScreen      from './screens/StatisticsScreen';
 import ProfileSettingsScreen from './screens/ProfileSettingsScreen';
 import ChatScreen            from './screens/ChatScreen';
 import LogHistoryScreen      from './screens/LogHistoryScreen';
+import LegalScreen           from './screens/LegalScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab   = createBottomTabNavigator();
@@ -137,6 +138,7 @@ function AppNavigator() {
         <Stack.Screen name="LoginForm"      component={LoginFormScreen} />
         <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
         <Stack.Screen name="ResetPassword"  component={ResetPasswordScreen} />
+        <Stack.Screen name="Legal"          component={LegalScreen} />
 
         {/* Onboarding flow */}
         <Stack.Screen name="Goals"      component={GoalsScreen} />

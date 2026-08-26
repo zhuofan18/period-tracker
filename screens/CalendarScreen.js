@@ -6,7 +6,7 @@ import { Calendar } from 'react-native-calendars';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { supabase } from '../lib/supabase';
 import { useTheme } from '../context/ThemeContext';
-import { getCycleDay, getPhaseForDay, PHASES, CYCLE_LENGTH, PERIOD_LENGTH, addDays, getCurrentCycleStart, getPhaseDates } from '../utils/cycleUtils';
+import { getCycleDay, getPhaseForDay, getAvgCycleLength, PHASES, CYCLE_LENGTH, PERIOD_LENGTH, addDays, getCurrentCycleStart, getPhaseDates } from '../utils/cycleUtils';
 import { shadow, radius } from '../theme/spacing';
 import { fontFamily } from '../theme/typography';
 
@@ -19,10 +19,10 @@ function buildMarkedDates(lastPeriodStartStr, cycleLength, periodLength, dayText
     for (let i = 0; i < cycleLength; i++) {
       const dateStr  = addDays(cycleStart, i);
       const dayNum   = i + 1;
-      const phaseKey = getPhaseForDay(dayNum, periodLength);
+      const phaseKey = getPhaseForDay(dayNum, periodLength, cycleLength);
       if (!phaseKey) continue;
-      const prevKey = getPhaseForDay(dayNum - 1, periodLength);
-      const nextKey = getPhaseForDay(dayNum + 1, periodLength);
+      const prevKey = getPhaseForDay(dayNum - 1, periodLength, cycleLength);
+      const nextKey = getPhaseForDay(dayNum + 1, periodLength, cycleLength);
       const phase   = PHASES[phaseKey];
       marked[dateStr] = {
         color:       phase.color + '3D', // lightly tinted, not a solid fill
@@ -55,7 +55,7 @@ const PHASE_DESCRIPTIONS = {
 const today = new Date().toISOString().split('T')[0];
 
 export default function CalendarScreen() {
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   const s = styles(theme);
   const navigation = useNavigation();
 
@@ -74,17 +74,23 @@ export default function CalendarScreen() {
           .select('cycle_length, period_length')
           .eq('id', user.id)
           .single();
-        if (profile) {
-          if (profile.cycle_length)  setCycleLength(profile.cycle_length);
-          if (profile.period_length) setPeriodLength(profile.period_length);
-        }
+        if (profile?.period_length) setPeriodLength(profile.period_length);
+
+        // Pull recent history (not just the latest period) so cycle length can be
+        // learned from real data instead of relying on the static profile setting.
         const { data } = await supabase
           .from('periods')
           .select('start_date')
           .eq('user_id', user.id)
           .order('start_date', { ascending: false })
-          .limit(1);
-        if (data && data.length > 0) setLastPeriodStart(data[0].start_date);
+          .limit(12);
+        if (data && data.length > 0) {
+          setLastPeriodStart(data[0].start_date);
+          setCycleLength(getAvgCycleLength(data, profile?.cycle_length || CYCLE_LENGTH));
+        } else {
+          setLastPeriodStart(null);
+          setCycleLength(profile?.cycle_length || CYCLE_LENGTH);
+        }
       };
       load();
     }, [])
@@ -94,7 +100,7 @@ export default function CalendarScreen() {
   const cycleDay          = lastPeriodStart ? getCycleDay(lastPeriodStart, cycleLength) : null;
   const currentCycleStart = lastPeriodStart ? getCurrentCycleStart(lastPeriodStart, cycleLength) : null;
   const phaseDates        = currentCycleStart ? getPhaseDates(currentCycleStart, cycleLength, periodLength) : null;
-  const currentPhaseKey   = cycleDay ? getPhaseForDay(cycleDay, periodLength) : null;
+  const currentPhaseKey   = cycleDay ? getPhaseForDay(cycleDay, periodLength, cycleLength) : null;
   const currentPhase      = currentPhaseKey ? PHASES[currentPhaseKey] : null;
 
   const getSelectedInfo = (dateStr) => {
@@ -104,7 +110,7 @@ export default function CalendarScreen() {
     );
     if (diff < 0) return null;
     const day      = (diff % cycleLength) + 1;
-    const phaseKey = getPhaseForDay(day, periodLength);
+    const phaseKey = getPhaseForDay(day, periodLength, cycleLength);
     if (!phaseKey) return null;
     return { day, phaseKey, phase: PHASES[phaseKey] };
   };
@@ -140,6 +146,7 @@ export default function CalendarScreen() {
         <View style={s.calendarShadowWrap}>
           <View style={s.calendarClip}>
             <Calendar
+              key={isDark ? 'dark' : 'light'}
               current={today}
               onDayPress={onDayPress}
               markingType="period"

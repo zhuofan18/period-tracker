@@ -46,7 +46,16 @@ export default function CreateAccountScreen({ navigation }) {
       options: { data: { username: username.trim() } },
     });
     setLoading(false);
-    if (error) { setServerError(error.message); return; }
+    if (error) {
+      const alreadyExists = /already registered|already exists|already been registered/i.test(error.message || '');
+      if (alreadyExists) {
+        setServerError('An account with this email already exists. Redirecting you to log in…');
+        setTimeout(() => navigation.navigate('LoginForm'), 1500);
+        return;
+      }
+      setServerError(error.message);
+      return;
+    }
 
     if (!data.session) {
       setServerError(

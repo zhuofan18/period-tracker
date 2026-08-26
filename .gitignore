@@ -33,6 +33,9 @@ yarn-error.*
 # local env files
 .env*.local
 
+# Netlify CLI local state (contains machine-specific paths/site linkage)
+.netlify/
+
 # typescript
 *.tsbuildinfo
 

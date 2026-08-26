@@ -87,7 +87,7 @@ const MOOD_OPTIONS = [
 const today = new Date().toISOString().split('T')[0];
 
 export default function CycleCalendarScreen({ navigation }) {
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   const s = styles(theme);
 
   const [selectedDate, setSelectedDate] = useState(null);
@@ -124,6 +124,7 @@ export default function CycleCalendarScreen({ navigation }) {
         <Text style={s.sub}>Tap a date on the calendar below.</Text>
 
         <Calendar
+          key={isDark ? 'dark' : 'light'}
           current={today}
           maxDate={today}
           onDayPress={onDayPress}

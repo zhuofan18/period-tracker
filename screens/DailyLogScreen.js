@@ -8,7 +8,7 @@ import SymptomMoodPicker, { SYMPTOM_EMOJI_MAP, MOOD_EMOJI_MAP } from '../compone
 import SwipeUpBar from '../components/SwipeUpBar';
 import { supabase } from '../lib/supabase';
 import { useTheme } from '../context/ThemeContext';
-import { getPhaseForDay, PHASES, CYCLE_LENGTH, PERIOD_LENGTH } from '../utils/cycleUtils';
+import { getPhaseForDay, getAvgCycleLength, PHASES, CYCLE_LENGTH, PERIOD_LENGTH } from '../utils/cycleUtils';
 import { shadow } from '../theme/spacing';
 import { fontFamily } from '../theme/typography';
 
@@ -90,18 +90,22 @@ export default function DailyLogScreen() {
         .select('cycle_length, period_length')
         .eq('id', user.id)
         .single();
-      if (profile) {
-        if (profile.cycle_length)  setCycleLength(profile.cycle_length);
-        if (profile.period_length) setPeriodLength(profile.period_length);
-      }
+      if (profile?.period_length) setPeriodLength(profile.period_length);
 
+      // Pull recent history (not just the latest period) so cycle length can be
+      // learned from real data instead of relying on the static profile setting.
       const { data: periods } = await supabase
         .from('periods')
         .select('start_date')
         .eq('user_id', user.id)
         .order('start_date', { ascending: false })
-        .limit(1);
-      if (periods && periods.length > 0) setLastPeriodStart(periods[0].start_date);
+        .limit(12);
+      if (periods && periods.length > 0) {
+        setLastPeriodStart(periods[0].start_date);
+        setCycleLength(getAvgCycleLength(periods, profile?.cycle_length || CYCLE_LENGTH));
+      } else {
+        setCycleLength(profile?.cycle_length || CYCLE_LENGTH);
+      }
     };
     init();
   }, []);
@@ -152,7 +156,7 @@ export default function DailyLogScreen() {
     return (diff % cycleLength) + 1;
   })();
 
-  const phaseKey  = cycleDay ? getPhaseForDay(cycleDay, periodLength) : 'follicular';
+  const phaseKey  = cycleDay ? getPhaseForDay(cycleDay, periodLength, cycleLength) : 'follicular';
   const phase     = PHASES[phaseKey];
   const questions = PHASE_QUESTIONS[phaseKey];
 
@@ -186,7 +190,14 @@ export default function DailyLogScreen() {
   };
 
   const saveBtnLabel = saved ? 'Saved ✓' : saving ? 'Saving...' : isToday ? "Save Today's Log" : 'Update Log';
-  const badgeBg = phase.textColor === '#fff' ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.08)';
+  // The header text isn't all on solid phase.color — the title sits near the
+  // top (still solid), but the date row and phase badge sit lower, where the
+  // gradient has faded toward theme.surface. Using phase.textColor there
+  // breaks: white text vanishes on the light-mode fade, dark text vanishes
+  // on the dark-mode fade. So only the title uses phase.textColor; anything
+  // lower uses theme.text, which is guaranteed to contrast with theme.surface
+  // in both modes, with just a light phase-color tint on its chip background.
+  const badgeBg = phase.color + '33';
 
   return (
     <FadeInView style={s.screen}>
@@ -209,11 +220,11 @@ export default function DailyLogScreen() {
         {/* Date navigation */}
         <View style={s.dateNav}>
           <TouchableOpacity onPress={() => navigateDay(-1)} style={s.dateArrow} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <Text style={[s.dateArrowText, { color: phase.textColor }]}>‹</Text>
+            <Text style={[s.dateArrowText, { color: theme.text }]}>‹</Text>
           </TouchableOpacity>
           <View style={s.dateCenter}>
-            <Text style={[s.dateText, { color: phase.textColor }]}>{formattedDate}</Text>
-            {isToday && <View style={[s.todayBadge, { backgroundColor: badgeBg }]}><Text style={[s.todayBadgeText, { color: phase.textColor }]}>Today</Text></View>}
+            <Text style={[s.dateText, { color: theme.text }]}>{formattedDate}</Text>
+            {isToday && <View style={[s.todayBadge, { backgroundColor: badgeBg }]}><Text style={[s.todayBadgeText, { color: theme.text }]}>Today</Text></View>}
           </View>
           <TouchableOpacity
             onPress={() => navigateDay(1)}
@@ -221,13 +232,13 @@ export default function DailyLogScreen() {
             disabled={isToday}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <Text style={[s.dateArrowText, { color: phase.textColor }, isToday && s.dateArrowDisabled]}>›</Text>
+            <Text style={[s.dateArrowText, { color: theme.text }, isToday && s.dateArrowDisabled]}>›</Text>
           </TouchableOpacity>
         </View>
 
         {/* Phase badge */}
         <View style={[s.phaseBadge, { backgroundColor: badgeBg }]}>
-          <Text style={[s.phaseBadgeText, { color: phase.textColor }]}>{cycleDay ? `Day ${cycleDay} · ` : ''}{phase.label}</Text>
+          <Text style={[s.phaseBadgeText, { color: theme.text }]}>{cycleDay ? `Day ${cycleDay} · ` : ''}{phase.label}</Text>
         </View>
       </LinearGradient>
 

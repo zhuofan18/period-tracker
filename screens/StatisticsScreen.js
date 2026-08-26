@@ -124,7 +124,7 @@ function CycleBar({ days, maxDays, theme }) {
 }
 
 export default function StatisticsScreen() {
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   const s = styles(theme);
   const navigation = useNavigation();
 
@@ -161,7 +161,9 @@ export default function StatisticsScreen() {
     }, [])
   );
 
-  const cycleLength  = profile?.cycle_length  || CYCLE_LENGTH;
+  // Prefer the real historical average (already computed in `stats`) over the
+  // static profile setting, so the current-cycle snapshot matches Home/Calendar.
+  const cycleLength  = stats?.avg || profile?.cycle_length || CYCLE_LENGTH;
   const periodLength = profile?.period_length || PERIOD_LENGTH;
 
   const openAddModal = () => {
@@ -209,6 +211,7 @@ export default function StatisticsScreen() {
           <Text style={s.modalSub}>Select the date it started — past dates are fine, this backfills your history.</Text>
 
           <Calendar
+            key={isDark ? 'dark' : 'light'}
             current={todayStr}
             maxDate={todayStr}
             onDayPress={(day) => setPickedDate(day.dateString)}
@@ -296,7 +299,7 @@ export default function StatisticsScreen() {
   } else {
     const lastPeriod     = periods[0];
     const cycleDay       = getCycleDay(lastPeriod.start_date, cycleLength);
-    const phaseKey       = getPhaseForDay(cycleDay, periodLength);
+    const phaseKey       = getPhaseForDay(cycleDay, periodLength, cycleLength);
     const phase          = PHASES[phaseKey];
     const daysLeft       = getDaysUntilNextPeriod(lastPeriod.start_date, cycleLength);
     const nextPeriodDate = getNextPeriodDate(lastPeriod.start_date, cycleLength);

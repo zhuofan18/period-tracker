@@ -24,15 +24,37 @@ export function getCurrentCycleStart(lastPeriodStartStr, cycleLength) {
   return addDays(lastPeriodStartStr, cyclesPassed * cycleLength);
 }
 
+// The luteal phase (ovulation → next period) is relatively fixed across
+// cycle lengths — it's the follicular phase (period → ovulation) that
+// stretches or shrinks. So ovulation is calculated backward from the end
+// of the cycle rather than pinned to a fixed day.
+const LUTEAL_LENGTH = 14;
+
+export function getOvulationDay(cycleLength = CYCLE_LENGTH, periodLength = PERIOD_LENGTH) {
+  // Floored so ovulation can never land inside (or right after) the period
+  // on unusually short cycles.
+  return Math.max(cycleLength - LUTEAL_LENGTH, periodLength + 3);
+}
+
+// Fertile window = the ~5 days sperm can survive before ovulation, plus
+// ovulation day itself.
+export function getFertileWindow(cycleLength = CYCLE_LENGTH, periodLength = PERIOD_LENGTH) {
+  const ovulationDay = getOvulationDay(cycleLength, periodLength);
+  const start = Math.max(ovulationDay - 5, periodLength + 1);
+  return { start, end: ovulationDay, ovulationDay };
+}
+
 export function getPhaseDates(cycleStart, cycleLength, periodLength) {
-  const d = (n) => fmtDate(addDays(cycleStart, n));
+  const d = (dayNum) => fmtDate(addDays(cycleStart, dayNum - 1));
+  const { start, ovulationDay } = getFertileWindow(cycleLength, periodLength);
+  const follicularEnd = start - 1;
   return {
-    period:     `${d(0)} – ${d(periodLength - 1)}`,
-    follicular: `${d(periodLength)} – ${d(12)}`,
-    fertile:    `${d(9)} – ${d(16)}`,
-    ovulation:  d(13),
-    luteal:     `${d(14)} – ${d(cycleLength - 1)}`,
-    nextPeriod: d(cycleLength),
+    period:     `${d(1)} – ${d(periodLength)}`,
+    follicular: follicularEnd > periodLength ? `${d(periodLength + 1)} – ${d(follicularEnd)}` : d(periodLength + 1),
+    fertile:    `${d(start)} – ${d(ovulationDay - 1)}`,
+    ovulation:  d(ovulationDay),
+    luteal:     `${d(ovulationDay + 1)} – ${d(cycleLength)}`,
+    nextPeriod: d(cycleLength + 1),
   };
 }
 
@@ -55,12 +77,31 @@ export function getCycleDay(lastPeriodStart, cycleLength = CYCLE_LENGTH) {
   return (diffDays % cycleLength) + 1;
 }
 
-export function getPhaseForDay(day, periodLength = PERIOD_LENGTH) {
+export function getPhaseForDay(day, periodLength = PERIOD_LENGTH, cycleLength = CYCLE_LENGTH) {
   if (day >= 1 && day <= periodLength) return 'period';
-  if (day === 14)                      return 'ovulation';
-  if (day >= 10 && day <= 17)          return 'fertile';
-  if (day >= 6 && day <= 13)           return 'follicular';
+  const { start, end, ovulationDay } = getFertileWindow(cycleLength, periodLength);
+  if (day === ovulationDay)            return 'ovulation';
+  if (day >= start && day <= end)      return 'fertile';
+  if (day > periodLength && day < start) return 'follicular';
   return 'luteal';
+}
+
+// Predicts cycle length from real logged history instead of a fixed
+// setting. Averages the gaps between consecutive period start dates
+// (ignoring implausible gaps — under a day, or over 90, which usually
+// mean a data-entry mistake rather than a real cycle). Falls back to
+// `fallback` (the profile's manual cycle_length, or the app default)
+// when there isn't at least 2 periods of real history to learn from.
+export function getAvgCycleLength(periods, fallback = CYCLE_LENGTH) {
+  if (!periods || periods.length < 2) return fallback;
+  const sorted = [...periods].sort((a, b) => new Date(a.start_date) - new Date(b.start_date));
+  const gaps = [];
+  for (let i = 1; i < sorted.length; i++) {
+    const diff = Math.round((new Date(sorted[i].start_date) - new Date(sorted[i - 1].start_date)) / (1000 * 60 * 60 * 24));
+    if (diff > 0 && diff < 90) gaps.push(diff);
+  }
+  if (gaps.length === 0) return fallback;
+  return Math.round(gaps.reduce((a, b) => a + b, 0) / gaps.length);
 }
 
 export function getDaysUntilNextPeriod(lastPeriodStart, cycleLength = CYCLE_LENGTH) {
